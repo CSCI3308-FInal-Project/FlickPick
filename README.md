@@ -70,10 +70,8 @@ FlickPick/
 
 ```bash
 cd ProjectSourceCode
-cp .env.example .env        # fill in your values
 docker compose up
 ```
+App runs at [http://localhost:3000]
 
-App runs at [http://localhost:3000](http://localhost:3000)
-
-View wireframes at [http://localhost:3000/wireframes](http://localhost:3000/wireframes)
+View wireframes at [http://localhost:3000/wireframes]
