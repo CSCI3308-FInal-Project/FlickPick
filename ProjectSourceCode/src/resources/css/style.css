@@ -177,6 +177,25 @@ main {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+.movie-card.swipe-left {
+  transform: translateX(-130%) rotate(-15deg);
+  opacity: 0;
+}
+
+.movie-card.swipe-right {
+  transform: translateX(130%) rotate(15deg);
+  opacity: 0;
+}
+
+.no-more-msg {
+  display: none;
+  text-align: center;
+  color: var(--muted);
+  padding: 2rem 0;
+  font-size: 0.95rem;
 }
 
 .card-poster {
