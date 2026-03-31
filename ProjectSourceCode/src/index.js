@@ -41,8 +41,49 @@ const requireAuth = (req, res, next) => {
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
-app.get('/', requireAuth, (req, res) => {
-  res.render('pages/home', { user: req.session.user });
+const GENRE_MAP = {
+  28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+  99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
+  27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance', 878: 'Sci-Fi',
+  53: 'Thriller', 10752: 'War', 37: 'Western',
+};
+
+app.get('/', requireAuth, async (req, res) => {
+  try {
+    const response = await fetch(
+      `https://api.themoviedb.org/3/movie/popular?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=1`
+    );
+    const data = await response.json();
+    const movies = (data.results || []).map(m => ({
+      id:       String(m.id),
+      title:    m.title,
+      poster:   m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
+      year:     m.release_date ? m.release_date.slice(0, 4) : 'N/A',
+      rating:   m.vote_average ? m.vote_average.toFixed(1) : 'N/A',
+      genres:   (m.genre_ids || []).slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean).join(', '),
+      synopsis: m.overview || '',
+    }));
+    res.render('pages/home', { user: req.session.user, movies: JSON.stringify(movies) });
+  } catch (err) {
+    console.error('TMDb fetch error:', err);
+    res.render('pages/home', { user: req.session.user, movies: '[]' });
+  }
+});
+
+app.post('/watchlist', requireAuth, async (req, res) => {
+  const { movie_id, title, poster_url } = req.body;
+  try {
+    await db.none(
+      `INSERT INTO watchlist(user_id, movie_id, title, poster_url)
+       VALUES($1, $2, $3, $4)
+       ON CONFLICT (user_id, movie_id) DO NOTHING`,
+      [req.session.user.id, movie_id, title, poster_url || null]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Watchlist insert error:', err);
+    res.status(500).json({ success: false });
+  }
 });
 
 app.get('/login', (req, res) => {
