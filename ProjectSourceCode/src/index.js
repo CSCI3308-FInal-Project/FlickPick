@@ -124,6 +124,33 @@ app.post('/register', async (req, res) => {
   }
 });
 
+app.get('/forgot-password', (req, res) => {
+  res.render('pages/forgot-password');
+});
+
+app.post('/forgot-password', async (req, res) => {
+  const { username_or_email, password, confirmPassword } = req.body;
+  
+  if (password !== confirmPassword) {
+    return res.render('pages/forgot-password', { message: 'Passwords do not match.' });
+  }
+
+  try {
+    const user = await db.oneOrNone('SELECT * FROM users WHERE username = $1 OR email = $1', [username_or_email]);
+    if (!user) {
+      return res.render('pages/forgot-password', { message: 'User not found with that username or email.' });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+    await db.none('UPDATE users SET password = $1 WHERE id = $2', [hashed, user.id]);
+    
+    res.render('pages/login', { message: 'Password reset successfully. Please log in with your new password.' });
+  } catch (err) {
+    console.error(err);
+    res.render('pages/forgot-password', { message: 'Something went wrong. Please try again.' });
+  }
+});
+
 app.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/login');
