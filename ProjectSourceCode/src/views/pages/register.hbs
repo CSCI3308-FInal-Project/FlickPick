@@ -19,8 +19,38 @@
       <label for="password">Password</label>
       <input type="password" id="password" name="password" required autocomplete="new-password" />
     </div>
+    <div class="form-group">
+      <label for="confirmPassword">Confirm Password</label>
+      <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password" />
+    </div>
+    <div id="passwordError" style="color: red; display: none; margin-top: 5px;">
+       Passwords do not match. Try again.
+    </div>
     <button type="submit" class="btn-primary">Create Account</button>
   </form>
 
   <p class="switch-auth">Already have an account? <a href="/login">Sign In</a></p>
 </div>
+
+<script>
+  const enter_password = document.getElementById("password");
+  const confirm_password = document.getElementById("confirmPassword");
+  const error = document.getElementById("passwordError");
+
+  //if the password field is filled and password and confirm password don't match an error message will appear when the field is left and everything will be cleared.
+  confirm_password.addEventListener("blur", function () {
+    const password = enter_password.value;
+    const confirm = confirm_password.value;
+    
+    if (confirm !== "" && password !== confirm) {
+      error.style.display = "block";
+      confirm_password.value = ""; 
+    } else {
+      error.style.display = "none";
+    }
+  });
+
+  confirm_password.addEventListener("input", function () {
+    error.style.display = "none";
+  });
+</script>
