@@ -1,48 +1,74 @@
 // FlickPick — client-side scripts
 
 document.addEventListener('DOMContentLoaded', () => {
+  const movies   = window.FLICKPICK_MOVIES || [];
+  let index      = 0;
 
-  // ── Home / Swipe ────────────────────────────────────────────────────────────
+  const card = document.getElementById('movieCard');
+  const noMore = document.getElementById('noMoreMsg');
+  const poster = document.getElementById('cardPoster');
+  const fallback = document.getElementById('cardFallback');
+  const titleEl = document.getElementById('cardTitle');
+  const metaEl = document.getElementById('cardMeta');
+  const synopsis = document.getElementById('cardSynopsis');
   const passBtn = document.getElementById('passBtn');
   const saveBtn = document.getElementById('saveBtn');
-  const card    = document.querySelector('.movie-card');
 
-  if (passBtn && card) {
-    passBtn.addEventListener('click', () => {
-      card.classList.add('swipe-left');
-      setTimeout(() => card.classList.remove('swipe-left'), 400);
-    });
+  function showCard(i) {
+    if (i >= movies.length) {
+      card.style.display = 'none';
+      noMore.style.display = 'block';
+      return;
+    }
+    const m = movies[i];
+    titleEl.textContent = m.title;
+    metaEl.textContent = [m.genres, m.year, `★ ${m.rating}`].filter(Boolean).join(' · ');
+    synopsis.textContent = m.synopsis;
+
+    if (m.poster) {
+      poster.src = m.poster;
+      poster.style.display = '';
+      fallback.style.display = 'none';
+    } else {
+      poster.style.display = 'none';
+      fallback.style.display = '';
+    }
   }
 
-  if (saveBtn && card) {
-    saveBtn.addEventListener('click', () => {
-      card.classList.add('swipe-right');
-      setTimeout(() => card.classList.remove('swipe-right'), 400);
+  function advance(direction) {
+    card.classList.add(direction === 'pass' ? 'swipe-left' : 'swipe-right');
+    setTimeout(() => {
+      card.classList.remove('swipe-left', 'swipe-right');
+      index++;
+      showCard(index);
+    }, 350);
+  }
 
-      fetch('/watchlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          movie_id:   'placeholder-001',
-          title:      card.querySelector('.card-title')?.textContent || 'Movie Title',
-          poster_url: card.querySelector('.card-poster img')?.src    || null,
-          genre:      null,
-          year:       null,
-          rating:     null,
-        }),
-      })
-        .then(res => {
-          if (res.status === 409) showCardToast(card, 'Already saved');
-          else if (res.ok)        showCardToast(card, 'Saved!');
-        })
-        .catch(() => {});
+  if (passBtn) {
+    passBtn.addEventListener('click', () => advance('pass'));
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      const m = movies[index];
+      if (!m) return;
+      try {
+        await fetch('/watchlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ movie_id: m.id, title: m.title, poster_url: m.poster }),
+        });
+      } catch (_) {
+        // silently continue — card still advances
+      }
+      advance('save');
     });
   }
 
   // ── Watchlist — client-side filter ─────────────────────────────────────────
   const searchInput = document.getElementById('watchlistSearch');
   const genreSelect = document.getElementById('genreFilter');
-  const movieList   = document.getElementById('movieList');
+  const movieList = document.getElementById('movieList');
 
   if (searchInput && genreSelect && movieList) {
     // Populate genre dropdown from rendered data attributes
@@ -59,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function filterMovies() {
-      const q     = searchInput.value.toLowerCase();
+      const q = searchInput.value.toLowerCase();
       const genre = genreSelect.value;
       movieList.querySelectorAll('.movie-row').forEach(row => {
         const matchTitle = row.dataset.title.toLowerCase().includes(q);
@@ -72,14 +98,15 @@ document.addEventListener('DOMContentLoaded', () => {
     genreSelect.addEventListener('change', filterMovies);
   }
 
+  showCard(0);
 });
 
 // ── Modal ──────────────────────────────────────────────────────────────────────
 
 function openModal(row) {
-  document.getElementById('modalTitle').textContent  = row.dataset.title  || '';
+  document.getElementById('modalTitle').textContent = row.dataset.title || '';
   document.getElementById('modalRating').textContent = row.dataset.rating ? `★ ${row.dataset.rating}` : '';
-  document.getElementById('modalMeta').textContent   =
+  document.getElementById('modalMeta').textContent =
     [row.dataset.genre, row.dataset.year].filter(Boolean).join(' • ');
   document.getElementById('modalTmdbLink').href =
     `https://www.themoviedb.org/movie/${row.dataset.movieId}`;
@@ -109,7 +136,7 @@ function showCardToast(card, text) {
   const existing = card.querySelector('.card-toast');
   if (existing) existing.remove();
   const toast = document.createElement('div');
-  toast.className   = 'card-toast';
+  toast.className = 'card-toast';
   toast.textContent = text;
   card.style.position = 'relative';
   card.appendChild(toast);

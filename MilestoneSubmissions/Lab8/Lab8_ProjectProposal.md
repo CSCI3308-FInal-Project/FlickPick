@@ -9,6 +9,7 @@
 ---
 
 ## 2. Team Name
+Team Too
 
 ---
 
@@ -74,12 +75,18 @@ All team members have been added as collaborators. The repository is public. A `
 
 ## 9. Development Methodology
 
+We will be using the Agile Methodology which will involved development sprints of a week or two at a time which will
+allign nicely with the lab structure for the rest of the class. Each sprint will focus on a few core features relating 
+to the current lab. We will use Slack as our communication board, where we discuss plans, talk about problems, and 
+communicate about division of labor. For the code, we will use individual branches and pull requests to ensure code is
+reviewed to prevent problems and conflicts before it is merged onto main. The goal will be to keep everything organised 
+but not strict so that we can work quickly and adjust as needed.
 
 ---
 
 ## 10. Communication Plan
 
-The team will use **[FILL IN — e.g., Discord / Slack / MS Teams]** as the primary communication tool for day-to-day coordination and async updates. Task-specific discussions will be tracked as comments directly on GitHub Issues to keep conversations organized and on-topic. The team will refrain from using personal text messages for project coordination.
+The team will use Slack as the primary communication tool for day-to-day coordination and async updates. Task-specific discussions will be tracked as comments directly on GitHub Issues to keep conversations organized and on-topic. The team will refrain from using personal text messages for project coordination.
 
 ---
 
@@ -135,6 +142,29 @@ The following pages have been wireframed:
 Each wireframe shows the page layout, navigation elements, and key interactive components at low fidelity.
 
 ---
+
+## Extra Credit
+
+Potential Issues:
+1. API Issues: Since we will be using an API for our movie database, it is possible that the API will be slow,
+have some sort of limit, or could go down. We could potentially some movie data and will avoid making 
+unnecessary API calls and have some backup data if needed.
+
+2. Group Matching: The logic for matching multiple users preference could be complicated and difficult to implement.
+We could start by keeping it simple, just matching likes, and make it more complex if we have time.
+
+3. UI Issues: Getting the swipe gestures to work and nice mobile layout could take time. It could also be difficult
+accounting for different kinds of devices with the design. This could lead to an inconsistent final product. We will
+have to keep the design simple and test on multiple devices to mitigate these issues.
+
+4. Time: 4 weeks is not a lot of time for a large project it would be easy to run out of time and not have a finished 
+project. We will have to stick to a development plan and focus on core features first to ensure the app is functional.
+
+5. Conflicts: Without proper attention, it is easy conflicts to occur with multiple people working on the same files 
+and merging with git. Could easily lead to bugs or other issues. We will have to use branches, commit often and 
+review pull requests regularly to mitigate the issue.
+
+
 
 ## Tech Stack (TBD)
 
