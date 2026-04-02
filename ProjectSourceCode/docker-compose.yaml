@@ -11,6 +11,7 @@ services:
   web:
     build: .
     env_file: .env
+    working_dir: /repository
     environment:
       - NODE_ENV=development
       - DB_HOST=db
@@ -19,7 +20,8 @@ services:
     ports:
       - '3000:3000'
     volumes:
-      - ./src:/app/src
-
+      - ./:/repository
+      - /repository/node_modules
+    command: npm run testandrun
 volumes:
   flickpick-db:

@@ -57,6 +57,10 @@ const GENRE_MAP = {
   53: 'Thriller', 10752: 'War', 37: 'Western',
 };
 
+app.get('/welcome', (req, res) => {
+  res.json({ status: 'success', message: 'Welcome!' });
+});
+
 app.get('/', requireAuth, async (req, res) => {
   try {
     const response = await fetch(
@@ -64,12 +68,12 @@ app.get('/', requireAuth, async (req, res) => {
     );
     const data = await response.json();
     const movies = (data.results || []).map(m => ({
-      id:       String(m.id),
-      title:    m.title,
-      poster:   m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
-      year:     m.release_date ? m.release_date.slice(0, 4) : 'N/A',
-      rating:   m.vote_average ? m.vote_average.toFixed(1) : 'N/A',
-      genres:   (m.genre_ids || []).slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean).join(', '),
+      id: String(m.id),
+      title: m.title,
+      poster: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
+      year: m.release_date ? m.release_date.slice(0, 4) : 'N/A',
+      rating: m.vote_average ? m.vote_average.toFixed(1) : 'N/A',
+      genres: (m.genre_ids || []).slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean).join(', '),
       synopsis: m.overview || '',
     }));
     res.render('pages/home', { user: req.session.user, movies: JSON.stringify(movies) });
@@ -139,7 +143,7 @@ app.get('/forgot-password', (req, res) => {
 
 app.post('/forgot-password', async (req, res) => {
   const { username_or_email, password, confirmPassword } = req.body;
-  
+
   if (password !== confirmPassword) {
     return res.render('pages/forgot-password', { message: 'Passwords do not match.' });
   }
@@ -152,7 +156,7 @@ app.post('/forgot-password', async (req, res) => {
 
     const hashed = await bcrypt.hash(password, 10);
     await db.none('UPDATE users SET password = $1 WHERE id = $2', [hashed, user.id]);
-    
+
     res.render('pages/login', { message: 'Password reset successfully. Please log in with your new password.' });
   } catch (err) {
     console.error(err);
@@ -187,7 +191,7 @@ app.post('/watchlist', requireAuth, async (req, res) => {
       `INSERT INTO watchlist(user_id, movie_id, title, poster_url, genre, year, rating)
        VALUES($1, $2, $3, $4, $5, $6, $7)`,
       [req.session.user.id, movie_id, title, poster_url || null,
-       genre || null, year || null, rating || null]
+      genre || null, year || null, rating || null]
     );
     res.status(201).json({ message: 'Added to watchlist' });
   } catch (err) {

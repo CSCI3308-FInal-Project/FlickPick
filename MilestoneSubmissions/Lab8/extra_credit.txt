@@ -1,0 +1,46 @@
+Extra Credit — Project Risk Analysis
+FlickPick | Team 1302 | CSCI 3308
+
+Identify at least five potential risks related to your project. For each risk, describe its severity and outline suitable mitigation 
+strategies to address it.
+
+---
+
+Risk 1: TMDb API Rate Limiting or Downtime
+The entire FlickPick experience depends on the TMDb API for movie data, posters, ratings, and metadata. 
+If TMDb enforces rate limits during peak usage or experiences downtime, the app becomes non-functional for all users simultaneously. 
+This is a high severity risk because it's an external dependency completely outside the team's control. Mitigation includes caching 
+frequently accessed movie data in the PostgreSQL database so the app can serve stale-but-functional data during outages, implementing
+exponential backoff on failed API calls, and displaying graceful error states rather than crashes.
+
+---
+
+Risk 2: Group Session Synchronization Conflicts
+The group watch session feature requires real-time or near-real-time state sharing between multiple users. If two users swipe
+simultaneously and the database isn't handling concurrent writes correctly, mutual match results could be missed or duplicated. 
+This is a medium-high severity risk that directly breaks a core differentiating feature. Mitigation involves using database transactions 
+with proper isolation levels for match detection, and thoroughly testing concurrent swipe scenarios before demo day.
+
+---
+
+Risk 3: Uneven Workload Distribution
+With five team members and a tight semester deadline, there's a real risk that one or two members end up carrying the majority of the
+implementation while others fall behind or disengage. This is a medium severity risk that affects both code quality and team morale. 
+Mitigation involves assigning clearly scoped GitHub Issues to individuals at the start of each sprint, tracking contributions during weekly TA
+meetings, and using pull requests so work is visible and reviewable by the whole team.
+
+---
+
+Risk 4: Scope Creep Beyond MVP
+FlickPick has ambitious features — swipe-based discovery, personalized recommendations, AND group sessions. There's a risk the team
+tries to build everything at full quality and delivers nothing polished. This is a high severity risk given the fixed deadline. 
+Mitigation is to strictly define a MVP (login, swipe, watchlist) that must be complete and demo-ready first, with group sessions and 
+recommendations treated as stretch goals only pursued once the core is stable.
+
+---
+
+Risk 5: Authentication and Session Security Vulnerabilities
+Since FlickPick stores user accounts and uses session-based authentication, a poorly implemented auth flow could expose user 
+credentials or allow session hijacking. This is a high severity risk from both a user trust and academic integrity standpoint. 
+Mitigation includes using bcryptjs for password hashing (already in the codebase), enforcing HTTPS in production, setting secure 
+and httpOnly flags on session cookies, and never storing plaintext credentials anywhere in the codebase or .env files committed to git.

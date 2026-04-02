@@ -3,10 +3,6 @@
   "version": "1.0.0",
   "description": "Swipe-based movie discovery app — Team 1302",
   "main": "src/index.js",
-  "scripts": {
-    "start": "node src/index.js",
-    "test": "mocha test/server.spec.js --timeout 5000 --exit"
-  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "express": "^4.18.2",
@@ -15,8 +11,16 @@
     "pg-promise": "^11.5.4"
   },
   "devDependencies": {
-    "chai": "^4.3.10",
-    "chai-http": "^4.4.0",
-    "mocha": "^10.2.0"
+    "nodemon": "^2.0.7",
+    "mocha": "^6.2.2",
+    "chai": "^4.2.0",
+    "chai-http": "^4.3.0",
+    "npm-run-all": "^4.1.5"
+  },
+  "scripts": {
+    "start": "nodemon src/index.js",
+    "test": "mocha --exit",
+    "prestart": "npm install",
+    "testandrun": "npm run prestart && npm run test && npm start"
   }
 }
