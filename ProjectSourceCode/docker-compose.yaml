@@ -1,20 +1,20 @@
 services:
   db:
-    image: postgres:14
+    image: postgres3
     env_file: .env
     expose:
       - '5432'
     volumes:
       - flickpick-db:/var/lib/postgresql/data
       - ./src/init_data:/docker-entrypoint-initdb.d
-
   web:
-    build: .
+    image: node:lts
+    user: 'node'
+    working_dir: /repository
     env_file: .env
     working_dir: /repository
     environment:
       - NODE_ENV=development
-      - DB_HOST=db
     depends_on:
       - db
     ports:
