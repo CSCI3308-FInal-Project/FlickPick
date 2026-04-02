@@ -33,6 +33,15 @@ app.use(
   })
 );
 
+// Method override — allows HTML forms to send DELETE via _method body field
+app.use((req, res, next) => {
+  if (req.body && req.body._method === 'DELETE') {
+    req.method = 'DELETE';
+    delete req.body._method;
+  }
+  next();
+});
+
 // Auth guard
 const requireAuth = (req, res, next) => {
   if (!req.session.user) return res.redirect('/login');
@@ -86,6 +95,52 @@ app.post('/register', async (req, res) => {
 app.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/login');
+});
+
+// ─── Watchlist ────────────────────────────────────────────────────────────────
+
+app.get('/watchlist', requireAuth, async (req, res) => {
+  try {
+    const movies = await db.any(
+      'SELECT * FROM watchlist WHERE user_id = $1 ORDER BY added_at DESC',
+      [req.session.user.id]
+    );
+    res.render('pages/watchlist', { user: req.session.user, movies, count: movies.length });
+  } catch (err) {
+    console.error(err);
+    res.render('pages/watchlist', { user: req.session.user, movies: [], count: 0 });
+  }
+});
+
+app.post('/watchlist', requireAuth, async (req, res) => {
+  const { movie_id, title, poster_url, genre, year, rating } = req.body;
+  try {
+    await db.none(
+      `INSERT INTO watchlist(user_id, movie_id, title, poster_url, genre, year, rating)
+       VALUES($1, $2, $3, $4, $5, $6, $7)`,
+      [req.session.user.id, movie_id, title, poster_url || null,
+       genre || null, year || null, rating || null]
+    );
+    res.status(201).json({ message: 'Added to watchlist' });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'Already in watchlist' });
+    }
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+app.delete('/watchlist/:id', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      'DELETE FROM watchlist WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.session.user.id]
+    );
+  } catch (err) {
+    console.error(err);
+  }
+  res.redirect('/watchlist');
 });
 
 // ─── Wireframes ───────────────────────────────────────────────────────────────

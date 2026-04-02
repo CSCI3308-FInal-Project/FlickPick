@@ -54,4 +54,44 @@ describe('FlickPick Server', () => {
     });
   });
 
+  describe('GET /watchlist (unauthenticated)', () => {
+    it('should redirect to /login', done => {
+      chai.request(app)
+        .get('/watchlist')
+        .redirects(0)
+        .end((err, res) => {
+          expect(res).to.have.status(302);
+          expect(res.headers.location).to.equal('/login');
+          done();
+        });
+    });
+  });
+
+  describe('POST /watchlist (unauthenticated)', () => {
+    it('should redirect to /login', done => {
+      chai.request(app)
+        .post('/watchlist')
+        .send({ movie_id: '123', title: 'Test' })
+        .redirects(0)
+        .end((err, res) => {
+          expect(res).to.have.status(302);
+          expect(res.headers.location).to.equal('/login');
+          done();
+        });
+    });
+  });
+
+  describe('DELETE /watchlist/1 (unauthenticated)', () => {
+    it('should redirect to /login', done => {
+      chai.request(app)
+        .delete('/watchlist/1')
+        .redirects(0)
+        .end((err, res) => {
+          expect(res).to.have.status(302);
+          expect(res.headers.location).to.equal('/login');
+          done();
+        });
+    });
+  });
+
 });

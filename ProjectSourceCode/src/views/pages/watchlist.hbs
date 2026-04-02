@@ -1,0 +1,92 @@
+<div class="watchlist-container">
+  <div class="watchlist-header">
+    <h1 class="watchlist-title">My Watchlist</h1>
+    <p class="watchlist-subtitle">{{count}} saved movies</p>
+  </div>
+
+  {{#if movies.length}}
+  <div class="search-bar">
+    <input type="text" id="watchlistSearch" placeholder="Search your watchlist…" />
+    <select id="genreFilter">
+      <option value="">All Genres</option>
+    </select>
+  </div>
+
+  <div class="movie-list" id="movieList">
+    {{#each movies}}
+    <div class="movie-row"
+      data-id="{{this.id}}"
+      data-title="{{this.title}}"
+      data-genre="{{this.genre}}"
+      data-movie-id="{{this.movie_id}}"
+      data-poster="{{this.poster_url}}"
+      data-year="{{this.year}}"
+      data-rating="{{this.rating}}">
+
+      <div class="movie-poster">
+        {{#if this.poster_url}}
+        <img src="{{this.poster_url}}" alt="{{this.title}} poster" />
+        {{else}}
+        🎬
+        {{/if}}
+      </div>
+
+      <div class="movie-info">
+        <div class="movie-title">{{this.title}}</div>
+        <div class="movie-meta">
+          {{this.genre}}{{#if this.year}} &bull; {{this.year}}{{/if}}{{#if this.rating}} &bull; ★ {{this.rating}}{{/if}}
+        </div>
+      </div>
+
+      <div class="movie-actions">
+        <div class="tip-btn">
+          <button class="btn-details" onclick="openModal(this.closest('.movie-row'))">Details</button>
+          <div class="tooltip">View more details</div>
+        </div>
+        <div class="tip-btn">
+          <form method="POST" action="/watchlist/{{this.id}}" style="display:contents">
+            <input type="hidden" name="_method" value="DELETE" />
+            <button type="submit" class="btn-remove">✕</button>
+          </form>
+          <div class="tooltip">Remove from watchlist</div>
+        </div>
+      </div>
+    </div>
+    {{/each}}
+  </div>
+
+  {{else}}
+  <div class="empty-state">
+    <p>Your watchlist is empty.</p>
+    <p><a href="/">Discover movies →</a></p>
+  </div>
+  {{/if}}
+</div>
+
+<!-- Details Modal -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModalOnBackdrop(event)">
+  <div class="modal" id="detailsModal">
+    <div class="modal-header">
+      <div class="modal-poster" id="modalPoster">🎬</div>
+      <div class="modal-title-block">
+        <div class="modal-title" id="modalTitle"></div>
+        <div class="modal-meta" id="modalMeta"></div>
+        <div class="modal-rating" id="modalRating"></div>
+        <a href="#" class="tmdb-badge" id="modalTmdbLink" target="_blank" rel="noopener noreferrer">↗ TMDb</a>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-placeholder">
+        Synopsis &amp; cast coming soon
+        <span>Full details available once TMDb API is connected</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <form method="POST" id="modalDeleteForm" style="display:contents">
+        <input type="hidden" name="_method" value="DELETE" />
+        <button type="submit" class="btn-remove-modal">✕ Remove</button>
+      </form>
+      <button class="btn-close" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
