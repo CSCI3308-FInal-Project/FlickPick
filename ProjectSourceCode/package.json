@@ -1,5 +1,5 @@
 {
-  "name": "<FlickPick>",
+  "name": "flickpick",
   "main": "src/index.js",
   "dependencies": {
     "express": "^4.6.1",

@@ -24,4 +24,28 @@ describe('FlickPick Server!', () => {
 
 // *********************** TODO: WRITE 2 UNIT TESTCASES **************************
 
-// ********************************************************************************
+describe('Testing Add User API', () => {
+  it('positive : /register', done => {
+    chai
+      .request(app)
+      .post('/register')
+      .send({ username: 'testuser', email: 'test@test.com', password: 'testpassword' })
+      .end((err, res) => {
+        expect(res).to.have.status(302);
+        done();
+      });
+  });
+});
+
+describe('Testing Add User API', () => {
+  it('negative : /register', done => {
+    chai
+      .request(app)
+      .post('/register')
+      .send({ username: 'testuser', email: 'test@test.com', password: 'testpassword' })
+      .end((err, res) => {
+        expect(res).to.have.status(400);
+        done();
+      });
+  });
+});

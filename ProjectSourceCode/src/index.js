@@ -132,8 +132,15 @@ app.post('/register', async (req, res) => {
     );
     res.redirect('/login');
   } catch (err) {
-    console.error(err);
-    res.render('pages/register', { message: 'Username or email already taken.' });
+    let message = "Something went wrong. Please try again.";
+    if (err.code === '23505') {
+      if (err.detail.includes('username')) {
+        message = "Username already taken";
+      } else if (err.detail.includes('email')) {
+        message = "There is already an account associated with this email";
+      }
+    }
+    res.status(400).render('pages/register', { message: message });
   }
 });
 
