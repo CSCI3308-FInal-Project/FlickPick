@@ -29,6 +29,7 @@ describe('Testing Add User API', () => {
     chai
       .request(app)
       .post('/register')
+      .redirects(0)
       .send({ username: 'testuser', email: 'test@test.com', password: 'testpassword' })
       .end((err, res) => {
         expect(res).to.have.status(302);
