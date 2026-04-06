@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlickPick | Profile</title>
+  <link rel="stylesheet" href="profile.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-brand">FlickPick</div>
+    <nav class="nav-links">
+      <a href="home.hbs">Home</a>
+      <a href="wireframe-watchlist.hbs">Watchlist</a>
+      <a href="wireframe-group-session.hbs">Group</a>
+      <a href="profile.hbs" class="active">Profile</a>
+    </nav>
+  </header>
+
+  <main class="profile-container">
+    <section class="profile-header">
+      <h1>My Profile</h1>
+
+      <div class="profile-icon">
+        <div class="icon-head"></div>
+        <div class="icon-body"></div>
+      </div>
+
+      <h2>Username: <span id="username">[Username]</span></h2>
+    </section>
+
+    <section class="info-card">
+      <h3>Favorite Genres</h3>
+      <ul id="genreList">
+        <li>x</li>
+        <li>x</li>
+        <li>x</li>
+      </ul>
+    </section>
+
+    <section class="info-card">
+      <h3>Swipe History Stats</h3>
+      <p>Total Swipes: <span id="totalSwipes">x</span></p>
+      <p>Right Swipes: <span id="rightSwipes">x</span></p>
+      <p>Left Swipes: <span id="leftSwipes">x</span></p>
+    </section>
+
+    <button id="logoutBtn" class="logout-btn">Logout</button>
+  </main>
+
+  <script src="profile.js"></script>
+</body>
+</html>
