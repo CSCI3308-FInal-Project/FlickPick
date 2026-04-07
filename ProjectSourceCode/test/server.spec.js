@@ -54,4 +54,46 @@ describe('FlickPick Server', () => {
     });
   });
 
-});
+
+  describe('POST /register', () => {
+    it('should return 302', done => {
+      const word = Date.now();
+
+      chai.request(app)
+        .post('/register')
+        .redirects(0)
+        .send({
+          username: `user${word}`,
+          email: `user${word}@test.com`,
+          password: 'testing123'
+        })
+        .end((err, res) => {
+          expect(res).to.have.status(302);
+          expect(res.headers.location).to.equal('/login');
+          done();
+        });
+    });
+
+    it('should return 200 for duplicate user', done => {
+      const word = Date.now();
+      const user = {
+        username: `dupuser${word}`,
+        email: `dup${word}@test.com`,
+        password: 'testing123'
+      };
+
+      chai.request(app)
+        .post('/register')
+        .send(user)
+        .end(() => {
+          chai.request(app)
+            .post('/register')
+            .send(user)
+            .end((err, res) => {
+              expect(res).to.have.status(200);
+              done();
+            });
+        });
+    });
+  });
+  });
