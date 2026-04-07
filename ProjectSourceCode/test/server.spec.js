@@ -50,3 +50,39 @@ describe('Testing Add User API', () => {
       });
   });
 });
+
+describe('Testing Watchlist API', () => {
+  const agent = chai.request.agent(app);
+
+  before(done => {
+    // Login with the credentials created in the register test
+    agent
+      .post('/login')
+      .send({ username: 'testuser', password: 'testpassword' })
+      .end((err, res) => {
+        done();
+      });
+  });
+
+  it('positive : /watchlist add movie', done => {
+    agent
+      .post('/watchlist')
+      .send({ movie_id: 99999, title: 'The Matrix' })
+      .end((err, res) => {
+        expect(res).to.have.status(201);
+        expect(res.body.message).to.equal('Added to watchlist');
+        done();
+      });
+  });
+
+  it('negative : /watchlist duplicate movie', done => {
+    agent
+      .post('/watchlist')
+      .send({ movie_id: 99999, title: 'The Matrix' })
+      .end((err, res) => {
+        expect(res).to.have.status(409);
+        expect(res.body.error).to.equal('Already in watchlist');
+        done();
+      });
+  });
+});
