@@ -1,0 +1,29 @@
+Notes: April 7, 2026
+1. Decisions made
+We have the swipe feature implemented.
+The main feature will be the group session.
+For the movie session feature, we plan to implement it so that when a session is created, 50 movies are selected at random and shown to everyone to swipe right or left.
+We decided to use mutual likes or tags on the API to suggest movies.
+We will use the TMDB API.
+We will include a friends list where you can add friends and use someone else’s profile.
+In next week’s lab, we will host the application.
+
+2. Alternative actions/options discussed
+We discussed whether to use mutual likes or tags from the API for recommendations.
+We discussed how the friends list works.
+We discussed how to implement the movie session feature.
+
+3. Follow-up items, including agreed-on roles and responsibilities
+Alitzel: added password feature for login page, reset password (this week’s lab).
+Matt: watchlist, user story, outside API setup for movies (movies showing up, remove movie, like button, trailer, etc.).
+Page: user authentication for register page, committing but not adding test.
+Rohith: home page, basic functionality, swiping right and left.
+Mason: friends list.
+
+Additional Tasks
+Get everything running.
+Work on a friends list and group session.
+API to log into the home page.
+Email verification.
+After logout, have it remember the user.
+Make sure to figure out what each of us will work on.
