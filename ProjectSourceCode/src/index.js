@@ -17,19 +17,7 @@ const db = pgp({
 });
 
 // Handlebars setup
-app.engine('hbs', engine({
-  extname: '.hbs',
-  defaultLayout: 'main',
-  helpers: {
-    genreBadges(genreStr) {
-      if (!genreStr) return '';
-      return genreStr.split(', ').map(g => {
-        const cls = g.replace(/[^a-zA-Z]/g, '');
-        return `<span class="genre-badge genre-${cls}">${g}</span>`;
-      }).join(' ');
-    },
-  },
-}));
+app.engine('hbs', engine({ extname: '.hbs', defaultLayout: 'main' }));
 app.set('view engine', 'hbs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -191,15 +179,31 @@ app.get('/logout', (req, res) => {
 // ─── Watchlist ────────────────────────────────────────────────────────────────
 
 app.get('/watchlist', requireAuth, async (req, res) => {
+  const activeTab = req.query.tab === 'watched' ? 'watched' : 'watchlist';
   try {
-    const movies = await db.any(
+    const all = await db.any(
       'SELECT * FROM watchlist WHERE user_id = $1 ORDER BY added_at DESC',
       [req.session.user.id]
     );
-    res.render('pages/watchlist', { user: req.session.user, movies, count: movies.length });
+    const watchlist = all.filter(m => !m.watched);
+    const watched   = all.filter(m => m.watched);
+    res.render('pages/watchlist', {
+      user: req.session.user,
+      watchlist,
+      watched,
+      watchlistCount: watchlist.length,
+      watchedCount:   watched.length,
+      tabWatchlist:   activeTab === 'watchlist',
+      tabWatched:     activeTab === 'watched',
+    });
   } catch (err) {
     console.error(err);
-    res.render('pages/watchlist', { user: req.session.user, movies: [], count: 0 });
+    res.render('pages/watchlist', {
+      user: req.session.user,
+      watchlist: [], watched: [],
+      watchlistCount: 0, watchedCount: 0,
+      tabWatchlist: true, tabWatched: false,
+    });
   }
 });
 
