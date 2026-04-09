@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS watchlist (
   movie_id   VARCHAR(50) NOT NULL,
   title      VARCHAR(255) NOT NULL,
   poster_url VARCHAR(500),
+  genre      VARCHAR(100),
+  year       INT,
+  rating     NUMERIC(3,1),
   added_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(user_id, movie_id)
 );

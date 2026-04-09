@@ -5,22 +5,28 @@
   </div>
 
   <div class="card-stack">
-    <div class="movie-card">
+    <div class="movie-card" id="movieCard">
       <div class="card-poster">
-        <img src="/img/home.png" alt="Movie poster placeholder" onerror="this.style.display='none'" />
-        <div class="poster-fallback">🎬</div>
+        <img id="cardPoster" src="" alt="Movie poster" onerror="this.style.display='none'" />
+        <div class="poster-fallback" id="cardFallback">🎬</div>
       </div>
       <div class="card-info">
-        <h2 class="card-title">Movie Title</h2>
-        <p class="card-meta">Genre &bull; Year &bull; ★ 8.5</p>
-        <p class="card-synopsis">
-          Movie synopsis will appear here once the API is integrated.
-        </p>
+        <h2 class="card-title" id="cardTitle">Loading...</h2>
+        <p class="card-meta" id="cardMeta"></p>
+        <p class="card-synopsis" id="cardSynopsis"></p>
       </div>
       <div class="card-actions">
         <button class="btn-pass" id="passBtn">✕ Pass</button>
         <button class="btn-save" id="saveBtn">♥ Save</button>
       </div>
     </div>
+
+    <p class="no-more-msg" id="noMoreMsg">
+      No more movies to show. <a href="/">Refresh for more.</a>
+    </p>
   </div>
 </div>
+
+<script>
+  window.FLICKPICK_MOVIES = {{{ movies }}};
+</script>
