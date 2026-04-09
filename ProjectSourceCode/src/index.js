@@ -57,17 +57,42 @@ const GENRE_MAP = {
   53: 'Thriller', 10752: 'War', 37: 'Western',
 };
 
+const TMDB_CATEGORIES = ['popular', 'top_rated', 'upcoming', 'now_playing'];
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 app.get('/welcome', (req, res) => {
   res.json({ status: 'success', message: 'Welcome!' });
 });
 
 app.get('/', requireAuth, async (req, res) => {
   try {
-    const response = await fetch(
-      `https://api.themoviedb.org/3/movie/popular?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=1`
-    );
-    const data = await response.json();
-    const movies = (data.results || []).map(m => ({
+    // Pick 2 different random categories and random pages for variety each load
+    const cats = shuffleArray([...TMDB_CATEGORIES]).slice(0, 2);
+    const page1 = Math.floor(Math.random() * 5) + 1;
+    const page2 = Math.floor(Math.random() * 5) + 1;
+
+    const [r1, r2] = await Promise.all([
+      fetch(`https://api.themoviedb.org/3/movie/${cats[0]}?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page1}`),
+      fetch(`https://api.themoviedb.org/3/movie/${cats[1]}?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page2}`),
+    ]);
+    const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+
+    // Combine, deduplicate by movie ID, then shuffle
+    const seen = new Set();
+    const combined = [...(d1.results || []), ...(d2.results || [])].filter(m => {
+      if (seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
+
+    const movies = shuffleArray(combined).map(m => ({
       id: String(m.id),
       title: m.title,
       poster: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
@@ -76,6 +101,7 @@ app.get('/', requireAuth, async (req, res) => {
       genres: (m.genre_ids || []).slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean).join(', '),
       synopsis: m.overview || '',
     }));
+
     res.render('pages/home', { user: req.session.user, movies: JSON.stringify(movies) });
   } catch (err) {
     console.error('TMDb fetch error:', err);
