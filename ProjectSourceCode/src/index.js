@@ -227,6 +227,7 @@ app.post('/watchlist', requireAuth, async (req, res) => {
 });
 
 app.delete('/watchlist/:id', requireAuth, async (req, res) => {
+  const tab = req.body._tab === 'watched' ? 'watched' : 'watchlist';
   try {
     await db.none(
       'DELETE FROM watchlist WHERE id = $1 AND user_id = $2',
@@ -235,7 +236,31 @@ app.delete('/watchlist/:id', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
   }
-  res.redirect('/watchlist');
+  res.redirect(`/watchlist?tab=${tab}`);
+});
+
+app.post('/watchlist/:id/watch', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      'UPDATE watchlist SET watched = true WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.session.user.id]
+    );
+  } catch (err) {
+    console.error(err);
+  }
+  res.redirect('/watchlist?tab=watchlist');
+});
+
+app.post('/watchlist/:id/unwatch', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      'UPDATE watchlist SET watched = false WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.session.user.id]
+    );
+  } catch (err) {
+    console.error(err);
+  }
+  res.redirect('/watchlist?tab=watched');
 });
 
 // ─── Wireframes ───────────────────────────────────────────────────────────────

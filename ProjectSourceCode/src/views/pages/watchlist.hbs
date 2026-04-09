@@ -1,65 +1,139 @@
 <div class="watchlist-container">
   <div class="watchlist-header">
-    <h1 class="watchlist-title">My Watchlist</h1>
-    <p class="watchlist-subtitle">{{count}} saved movies</p>
+    <h1 class="watchlist-title">{{#if tabWatched}}Watched{{else}}My Watchlist{{/if}}</h1>
+    <p class="watchlist-subtitle">
+      {{#if tabWatched}}{{watchedCount}} watched movies{{else}}{{watchlistCount}} saved movies{{/if}}
+    </p>
   </div>
 
-  {{#if movies.length}}
-  <div class="search-bar">
-    <input type="text" id="watchlistSearch" placeholder="Search your watchlist…" />
-    <select id="genreFilter">
-      <option value="">All Genres</option>
-    </select>
+  <!-- Tabs -->
+  <div class="watchlist-tabs">
+    <a href="/watchlist?tab=watchlist" class="tab-link {{#if tabWatchlist}}tab-active{{/if}}">
+      My Watchlist <span class="tab-count">{{watchlistCount}}</span>
+    </a>
+    <a href="/watchlist?tab=watched" class="tab-link {{#if tabWatched}}tab-active{{/if}}">
+      Watched <span class="tab-count">{{watchedCount}}</span>
+    </a>
   </div>
 
-  <div class="movie-list" id="movieList">
-    {{#each movies}}
-    <div class="movie-row"
-      data-id="{{this.id}}"
-      data-title="{{this.title}}"
-      data-genre="{{this.genre}}"
-      data-movie-id="{{this.movie_id}}"
-      data-poster="{{this.poster_url}}"
-      data-year="{{this.year}}"
-      data-rating="{{this.rating}}">
-
-      <div class="movie-poster">
-        {{#if this.poster_url}}
-        <img src="{{this.poster_url}}" alt="{{this.title}} poster" />
-        {{else}}
-        🎬
-        {{/if}}
-      </div>
-
-      <div class="movie-info">
-        <div class="movie-title">{{this.title}}</div>
-        <div class="movie-meta">
-          {{this.genre}}{{#if this.year}} &bull; {{this.year}}{{/if}}{{#if this.rating}} &bull; ★ {{this.rating}}{{/if}}
-        </div>
-      </div>
-
-      <div class="movie-actions">
-        <div class="tip-btn">
-          <button class="btn-details" onclick="openModal(this.closest('.movie-row'))">Details</button>
-          <div class="tooltip">View more details</div>
-        </div>
-        <div class="tip-btn">
-          <form method="POST" action="/watchlist/{{this.id}}" style="display:contents">
-            <input type="hidden" name="_method" value="DELETE" />
-            <button type="submit" class="btn-remove">✕</button>
-          </form>
-          <div class="tooltip">Remove from watchlist</div>
-        </div>
-      </div>
+  {{#if tabWatchlist}}
+    {{#if watchlist.length}}
+    <div class="search-bar">
+      <input type="text" id="watchlistSearch" placeholder="Search your watchlist…" />
+      <select id="genreFilter">
+        <option value="">All Genres</option>
+      </select>
     </div>
-    {{/each}}
-  </div>
+    <div class="movie-list" id="movieList">
+      {{#each watchlist}}
+      <div class="movie-row"
+        data-id="{{this.id}}"
+        data-title="{{this.title}}"
+        data-genre="{{this.genre}}"
+        data-movie-id="{{this.movie_id}}"
+        data-poster="{{this.poster_url}}"
+        data-year="{{this.year}}"
+        data-rating="{{this.rating}}"
+        data-watched="false">
 
-  {{else}}
-  <div class="empty-state">
-    <p>Your watchlist is empty.</p>
-    <p><a href="/">Discover movies →</a></p>
-  </div>
+        <div class="movie-poster">
+          {{#if this.poster_url}}
+          <img src="{{this.poster_url}}" alt="{{this.title}} poster" />
+          {{else}}
+          🎬
+          {{/if}}
+        </div>
+
+        <div class="movie-info">
+          <div class="movie-title">{{this.title}}</div>
+          <div class="movie-meta">
+            {{this.genre}}{{#if this.year}} &bull; {{this.year}}{{/if}}{{#if this.rating}} &bull; ★ {{this.rating}}{{/if}}
+          </div>
+        </div>
+
+        <div class="movie-actions">
+          <div class="tip-btn">
+            <button class="btn-details" onclick="openModal(this.closest('.movie-row'))">Details</button>
+            <div class="tooltip">View more details</div>
+          </div>
+          <div class="tip-btn">
+            <form method="POST" action="/watchlist/{{this.id}}" style="display:contents">
+              <input type="hidden" name="_method" value="DELETE" />
+              <input type="hidden" name="_tab" value="watchlist" />
+              <button type="submit" class="btn-remove">✕</button>
+            </form>
+            <div class="tooltip">Remove from watchlist</div>
+          </div>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="empty-state">
+      <p>Your watchlist is empty.</p>
+      <p><a href="/">Discover movies →</a></p>
+    </div>
+    {{/if}}
+  {{/if}}
+
+  {{#if tabWatched}}
+    {{#if watched.length}}
+    <div class="search-bar">
+      <input type="text" id="watchlistSearch" placeholder="Search watched movies…" />
+      <select id="genreFilter">
+        <option value="">All Genres</option>
+      </select>
+    </div>
+    <div class="movie-list" id="movieList">
+      {{#each watched}}
+      <div class="movie-row"
+        data-id="{{this.id}}"
+        data-title="{{this.title}}"
+        data-genre="{{this.genre}}"
+        data-movie-id="{{this.movie_id}}"
+        data-poster="{{this.poster_url}}"
+        data-year="{{this.year}}"
+        data-rating="{{this.rating}}"
+        data-watched="true">
+
+        <div class="movie-poster">
+          {{#if this.poster_url}}
+          <img src="{{this.poster_url}}" alt="{{this.title}} poster" />
+          {{else}}
+          🎬
+          {{/if}}
+        </div>
+
+        <div class="movie-info">
+          <div class="movie-title">{{this.title}}</div>
+          <div class="movie-meta">
+            {{this.genre}}{{#if this.year}} &bull; {{this.year}}{{/if}}{{#if this.rating}} &bull; ★ {{this.rating}}{{/if}}
+          </div>
+        </div>
+
+        <div class="movie-actions">
+          <div class="tip-btn">
+            <button class="btn-details" onclick="openModal(this.closest('.movie-row'))">Details</button>
+            <div class="tooltip">View more details</div>
+          </div>
+          <div class="tip-btn">
+            <form method="POST" action="/watchlist/{{this.id}}" style="display:contents">
+              <input type="hidden" name="_method" value="DELETE" />
+              <input type="hidden" name="_tab" value="watched" />
+              <button type="submit" class="btn-remove">✕</button>
+            </form>
+            <div class="tooltip">Remove from watched list</div>
+          </div>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="empty-state">
+      <p>No watched movies yet.</p>
+      <p><a href="/watchlist?tab=watchlist">Go to your watchlist →</a></p>
+    </div>
+    {{/if}}
   {{/if}}
 </div>
 
@@ -84,7 +158,11 @@
     <div class="modal-footer">
       <form method="POST" id="modalDeleteForm" style="display:contents">
         <input type="hidden" name="_method" value="DELETE" />
+        <input type="hidden" name="_tab" id="modalDeleteTab" value="watchlist" />
         <button type="submit" class="btn-remove-modal">✕ Remove</button>
+      </form>
+      <form method="POST" id="modalWatchForm" style="display:contents">
+        <button type="submit" class="btn-watch-modal" id="modalWatchBtn"></button>
       </form>
       <button class="btn-close" onclick="closeModal()">Close</button>
     </div>

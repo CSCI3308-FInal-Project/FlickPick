@@ -51,6 +51,32 @@ describe('Testing Add User API', () => {
   });
 });
 
+describe('GET /api/movie/:tmdbId', () => {
+  it('returns director and cast for a valid TMDB id', done => {
+    chai
+      .request(app)
+      .get('/api/movie/550') // Fight Club — stable TMDB entry
+      .end((err, res) => {
+        expect(res).to.have.status(200);
+        expect(res.body).to.have.property('director');
+        expect(res.body).to.have.property('cast');
+        expect(res.body.cast).to.be.an('array');
+        done();
+      });
+  });
+
+  it('returns 500 for an invalid TMDB id', done => {
+    chai
+      .request(app)
+      .get('/api/movie/0')
+      .end((err, res) => {
+        expect(res).to.have.status(500);
+        expect(res.body).to.have.property('error');
+        done();
+      });
+  });
+});
+
 describe('Testing Watchlist API', () => {
   const agent = chai.request.agent(app);
 

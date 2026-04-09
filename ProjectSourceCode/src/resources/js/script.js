@@ -22,7 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const m = movies[i];
     titleEl.textContent = m.title;
-    metaEl.textContent = [m.genres, m.year, `★ ${m.rating}`].filter(Boolean).join(' · ');
+    const badgeHtml = (m.genres || '').split(', ').filter(Boolean).map(g => {
+      const cls = g.replace(/[^a-zA-Z]/g, '');
+      return `<span class="genre-badge genre-${cls}">${g}</span>`;
+    }).join(' ');
+    const metaParts = [m.year, m.rating ? `★ ${m.rating}` : null].filter(Boolean).join(' · ');
+    metaEl.innerHTML = badgeHtml + (metaParts ? `<span class="meta-sep"> · </span>${metaParts}` : '');
     synopsis.textContent = m.synopsis;
 
     if (m.poster) {
@@ -110,7 +115,22 @@ function openModal(row) {
     [row.dataset.genre, row.dataset.year].filter(Boolean).join(' • ');
   document.getElementById('modalTmdbLink').href =
     `https://www.themoviedb.org/movie/${row.dataset.movieId}`;
-  document.getElementById('modalDeleteForm').action = `/watchlist/${row.dataset.id}`;
+
+  const id = row.dataset.id;
+  const isWatched = row.dataset.watched === 'true';
+
+  document.getElementById('modalDeleteForm').action = `/watchlist/${id}`;
+  document.getElementById('modalDeleteTab').value = isWatched ? 'watched' : 'watchlist';
+
+  const watchForm = document.getElementById('modalWatchForm');
+  const watchBtn  = document.getElementById('modalWatchBtn');
+  if (isWatched) {
+    watchForm.action = `/watchlist/${id}/unwatch`;
+    watchBtn.textContent = '↩ Move to Watchlist';
+  } else {
+    watchForm.action = `/watchlist/${id}/watch`;
+    watchBtn.textContent = '✓ Mark as Watched';
+  }
 
   const posterEl = document.getElementById('modalPoster');
   if (row.dataset.poster) {
