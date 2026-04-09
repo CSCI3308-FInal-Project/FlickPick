@@ -17,7 +17,14 @@ const db = pgp({
 });
 
 // Handlebars setup
-app.engine('hbs', engine({ extname: '.hbs', defaultLayout: 'main' }));
+app.engine('hbs', engine({
+  extname: '.hbs',
+  defaultLayout: 'main',
+  helpers: {
+    eq: (a, b) => a === b,
+    or: (a, b) => a || b,
+  },
+}));
 app.set('view engine', 'hbs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -72,25 +79,45 @@ app.get('/welcome', (req, res) => {
 });
 
 app.get('/', requireAuth, async (req, res) => {
+  const { genre, minRating } = req.query;
+  const activeFilters = { genre: genre || '', minRating: minRating || '' };
+
   try {
-    // Pick 2 different random categories and random pages for variety each load
-    const cats = shuffleArray([...TMDB_CATEGORIES]).slice(0, 2);
-    const page1 = Math.floor(Math.random() * 5) + 1;
-    const page2 = Math.floor(Math.random() * 5) + 1;
+    let combined = [];
 
-    const [r1, r2] = await Promise.all([
-      fetch(`https://api.themoviedb.org/3/movie/${cats[0]}?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page1}`),
-      fetch(`https://api.themoviedb.org/3/movie/${cats[1]}?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page2}`),
-    ]);
-    const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+    if (genre || minRating) {
+      // Use TMDb discover endpoint when filters are active
+      const params = new URLSearchParams({
+        api_key: process.env.TMDB_API_KEY,
+        language: 'en-US',
+        sort_by: 'popularity.desc',
+        page: Math.floor(Math.random() * 5) + 1,
+      });
+      if (genre)     params.set('with_genres', genre);
+      if (minRating) params.set('vote_average.gte', minRating);
 
-    // Combine, deduplicate by movie ID, then shuffle
-    const seen = new Set();
-    const combined = [...(d1.results || []), ...(d2.results || [])].filter(m => {
-      if (seen.has(m.id)) return false;
-      seen.add(m.id);
-      return true;
-    });
+      const r = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
+      const d = await r.json();
+      combined = d.results || [];
+    } else {
+      // No filters — pick 2 random categories on random pages
+      const cats = shuffleArray([...TMDB_CATEGORIES]).slice(0, 2);
+      const page1 = Math.floor(Math.random() * 5) + 1;
+      const page2 = Math.floor(Math.random() * 5) + 1;
+
+      const [r1, r2] = await Promise.all([
+        fetch(`https://api.themoviedb.org/3/movie/${cats[0]}?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page1}`),
+        fetch(`https://api.themoviedb.org/3/movie/${cats[1]}?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page2}`),
+      ]);
+      const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+
+      const seen = new Set();
+      combined = [...(d1.results || []), ...(d2.results || [])].filter(m => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      });
+    }
 
     const movies = shuffleArray(combined).map(m => ({
       id: String(m.id),
@@ -102,10 +129,10 @@ app.get('/', requireAuth, async (req, res) => {
       synopsis: m.overview || '',
     }));
 
-    res.render('pages/home', { user: req.session.user, movies: JSON.stringify(movies) });
+    res.render('pages/home', { user: req.session.user, movies: JSON.stringify(movies), activeFilters });
   } catch (err) {
     console.error('TMDb fetch error:', err);
-    res.render('pages/home', { user: req.session.user, movies: '[]' });
+    res.render('pages/home', { user: req.session.user, movies: '[]', activeFilters });
   }
 });
 

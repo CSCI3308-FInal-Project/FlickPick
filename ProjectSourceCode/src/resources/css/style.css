@@ -153,6 +153,58 @@ main {
   margin-bottom: 1rem;
 }
 
+/* ── Home Filter Bar ─────────────────────────────────────────────────────── */
+.filter-bar {
+  width: 100%;
+  max-width: 380px;
+}
+
+.filter-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-select {
+  flex: 1;
+  min-width: 120px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.filter-select:focus { outline: none; border-color: var(--accent); }
+
+.btn-filter-apply {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.btn-filter-apply:hover { background: var(--accent-h); }
+
+.btn-filter-clear {
+  color: var(--muted);
+  font-size: 0.82rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  transition: color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+.btn-filter-clear:hover { color: var(--text); border-color: #444; }
+
 /* ── Home / Movie Card ────────────────────────────────────────────────────── */
 .home-container {
   display: flex;
