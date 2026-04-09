@@ -17,7 +17,19 @@ const db = pgp({
 });
 
 // Handlebars setup
-app.engine('hbs', engine({ extname: '.hbs', defaultLayout: 'main' }));
+app.engine('hbs', engine({
+  extname: '.hbs',
+  defaultLayout: 'main',
+  helpers: {
+    genreBadges(genreStr) {
+      if (!genreStr) return '';
+      return genreStr.split(', ').map(g => {
+        const cls = g.replace(/[^a-zA-Z]/g, '');
+        return `<span class="genre-badge genre-${cls}">${g}</span>`;
+      }).join(' ');
+    },
+  },
+}));
 app.set('view engine', 'hbs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -192,13 +204,13 @@ app.get('/watchlist', requireAuth, async (req, res) => {
 });
 
 app.post('/watchlist', requireAuth, async (req, res) => {
-  const { movie_id, title, poster_url, genre, year, rating } = req.body;
+  const { movie_id, title, poster_url, genre, year, rating, synopsis } = req.body;
   try {
     await db.none(
-      `INSERT INTO watchlist(user_id, movie_id, title, poster_url, genre, year, rating)
-       VALUES($1, $2, $3, $4, $5, $6, $7)`,
+      `INSERT INTO watchlist(user_id, movie_id, title, poster_url, genre, year, rating, synopsis)
+       VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
       [req.session.user.id, movie_id, title, poster_url || null,
-      genre || null, year || null, rating || null]
+       genre || null, year || null, rating || null, synopsis || null]
     );
     res.status(201).json({ message: 'Added to watchlist' });
   } catch (err) {
