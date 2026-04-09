@@ -270,7 +270,8 @@ main {
 
 .card-info { padding: 1.2rem; }
 .card-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.3rem; }
-.card-meta  { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.7rem; }
+.card-meta  { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.7rem; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.meta-sep   { color: #555; }
 .card-synopsis { font-size: 0.92rem; line-height: 1.5; color: #ccc; }
 
 .card-actions {
@@ -685,7 +686,7 @@ main {
   flex-shrink: 0;
 }
 
-<<<<<<< HEAD
+
 /* Profile Style */
 
 .profile-container {
@@ -728,7 +729,7 @@ main {
 .logout-btn:hover {
   background: var(--accent-h);
 }
-=======
+
 /* ── Watchlist ────────────────────────────────────────────────────────────── */
 .watchlist-container {
   max-width: 720px;
@@ -979,7 +980,65 @@ main {
 }
 .btn-close:hover { background: #2a2a2a; color: var(--text); }
 
-/* Save toast on home card */
+/* ── Genre Badges ─────────────────────────────────────────────────────────── */
+/* Primary style: soft pill badges (translucent bg, colored text + border)    */
+.genre-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  vertical-align: middle;
+  line-height: 1.6;
+}
+.genre-Action      { background: rgba(239,83,80,0.18);  color: #ef5350; border: 1px solid rgba(239,83,80,0.35); }
+.genre-Adventure   { background: rgba(255,152,0,0.18);  color: #ffa726; border: 1px solid rgba(255,152,0,0.35); }
+.genre-Animation   { background: rgba(255,213,79,0.18); color: #ffca28; border: 1px solid rgba(255,213,79,0.35); }
+.genre-Comedy      { background: rgba(255,183,77,0.18); color: #ffb74d; border: 1px solid rgba(255,183,77,0.35); }
+.genre-Crime       { background: rgba(141,110,99,0.18); color: #a1887f; border: 1px solid rgba(141,110,99,0.35); }
+.genre-Documentary { background: rgba(78,205,196,0.18); color: #4ecdc4; border: 1px solid rgba(78,205,196,0.35); }
+.genre-Drama       { background: rgba(66,165,245,0.18); color: #64b5f6; border: 1px solid rgba(66,165,245,0.35); }
+.genre-Family      { background: rgba(129,199,132,0.18);color: #81c784; border: 1px solid rgba(129,199,132,0.35); }
+.genre-Fantasy     { background: rgba(149,117,205,0.18);color: #9575cd; border: 1px solid rgba(149,117,205,0.35); }
+.genre-History     { background: rgba(161,136,127,0.18);color: #bcaaa4; border: 1px solid rgba(161,136,127,0.35); }
+.genre-Horror      { background: rgba(171,71,188,0.18); color: #ce93d8; border: 1px solid rgba(171,71,188,0.35); }
+.genre-Music       { background: rgba(236,64,122,0.18); color: #f06292; border: 1px solid rgba(236,64,122,0.35); }
+.genre-Mystery     { background: rgba(38,166,154,0.18); color: #4db6ac; border: 1px solid rgba(38,166,154,0.35); }
+.genre-Romance     { background: rgba(240,98,146,0.18); color: #f48fb1; border: 1px solid rgba(240,98,146,0.35); }
+.genre-SciFi       { background: rgba(38,198,218,0.18); color: #4dd0e1; border: 1px solid rgba(38,198,218,0.35); }
+.genre-Thriller    { background: rgba(255,112,67,0.18); color: #ff7043; border: 1px solid rgba(255,112,67,0.35); }
+.genre-TVMovie     { background: rgba(120,144,156,0.18);color: #90a4ae; border: 1px solid rgba(120,144,156,0.35); }
+.genre-War         { background: rgba(120,144,156,0.18);color: #90a4ae; border: 1px solid rgba(120,144,156,0.35); }
+.genre-Western     { background: rgba(188,143,50,0.18); color: #d4a843; border: 1px solid rgba(188,143,50,0.35); }
+
+/*
+ * Fallback style: solid filled tags (swap in by replacing .genre-badge above)
+ *
+ * .genre-badge { display:inline-block; font-size:0.68rem; font-weight:700;
+ *   padding:2px 8px; border-radius:4px; vertical-align:middle;
+ *   text-transform:uppercase; letter-spacing:0.03em; line-height:1.6; }
+ * .genre-Action      { background:#7f1d1d; color:#fca5a5; }
+ * .genre-Adventure   { background:#7c2d12; color:#fdba74; }
+ * .genre-Animation   { background:#713f12; color:#fde68a; }
+ * .genre-Comedy      { background:#78350f; color:#fcd34d; }
+ * .genre-Crime       { background:#3d2314; color:#d6bcaa; }
+ * .genre-Documentary { background:#134e4a; color:#5eead4; }
+ * .genre-Drama       { background:#1e3a5f; color:#93c5fd; }
+ * .genre-Family      { background:#14532d; color:#86efac; }
+ * .genre-Fantasy     { background:#3b0764; color:#d8b4fe; }
+ * .genre-History     { background:#292524; color:#d6d3d1; }
+ * .genre-Horror      { background:#2e1065; color:#c4b5fd; }
+ * .genre-Music       { background:#500724; color:#fda4af; }
+ * .genre-Mystery     { background:#042f2e; color:#5eead4; }
+ * .genre-Romance     { background:#4c0519; color:#fda4af; }
+ * .genre-SciFi       { background:#083344; color:#67e8f9; }
+ * .genre-Thriller    { background:#431407; color:#fdba74; }
+ * .genre-TVMovie     { background:#1e293b; color:#94a3b8; }
+ * .genre-War         { background:#1e293b; color:#94a3b8; }
+ * .genre-Western     { background:#451a03; color:#fde68a; }
+ */
+
+/* ── Save toast on home card */
 .card-toast {
   position: absolute;
   bottom: 60px;
@@ -1000,4 +1059,94 @@ main {
   70%  { opacity: 1; }
   100% { opacity: 0; }
 }
->>>>>>> origin/main
+
+
+/* ── Watchlist Tabs ───────────────────────────────────────────────────────── */
+.watchlist-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+
+.tab-link {
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-link:hover {
+  color: var(--text);
+}
+
+.tab-link.tab-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.tab-count {
+  background: var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
+  margin-left: 0.35rem;
+  color: var(--muted);
+}
+
+/* ── Nav Dropdown ─────────────────────────────────────────────────────────── */
+.nav-dropdown {
+  position: relative;
+}
+
+.nav-dropdown .dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 160px;
+  z-index: 100;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.nav-dropdown:hover .dropdown-menu,
+.nav-dropdown:focus-within .dropdown-menu {
+  display: block;
+}
+
+.dropdown-item {
+  display: block;
+  padding: 0.65rem 1rem;
+  font-size: 0.875rem;
+  color: var(--text);
+  transition: background 0.15s;
+}
+
+.dropdown-item:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+/* ── Watch Modal Button ───────────────────────────────────────────────────── */
+.btn-watch-modal {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: var(--success);
+  border-radius: 8px;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-watch-modal:hover {
+  background: rgba(34, 197, 94, 0.22);
+}

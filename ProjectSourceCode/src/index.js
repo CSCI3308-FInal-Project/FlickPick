@@ -232,26 +232,42 @@ app.get('/logout', (req, res) => {
 // ─── Watchlist ────────────────────────────────────────────────────────────────
 
 app.get('/watchlist', requireAuth, async (req, res) => {
+  const activeTab = req.query.tab === 'watched' ? 'watched' : 'watchlist';
   try {
-    const movies = await db.any(
+    const all = await db.any(
       'SELECT * FROM watchlist WHERE user_id = $1 ORDER BY added_at DESC',
       [req.session.user.id]
     );
-    res.render('pages/watchlist', { user: req.session.user, movies, count: movies.length });
+    const watchlist = all.filter(m => !m.watched);
+    const watched   = all.filter(m => m.watched);
+    res.render('pages/watchlist', {
+      user: req.session.user,
+      watchlist,
+      watched,
+      watchlistCount: watchlist.length,
+      watchedCount:   watched.length,
+      tabWatchlist:   activeTab === 'watchlist',
+      tabWatched:     activeTab === 'watched',
+    });
   } catch (err) {
     console.error(err);
-    res.render('pages/watchlist', { user: req.session.user, movies: [], count: 0 });
+    res.render('pages/watchlist', {
+      user: req.session.user,
+      watchlist: [], watched: [],
+      watchlistCount: 0, watchedCount: 0,
+      tabWatchlist: true, tabWatched: false,
+    });
   }
 });
 
 app.post('/watchlist', requireAuth, async (req, res) => {
-  const { movie_id, title, poster_url, genre, year, rating } = req.body;
+  const { movie_id, title, poster_url, genre, year, rating, synopsis } = req.body;
   try {
     await db.none(
-      `INSERT INTO watchlist(user_id, movie_id, title, poster_url, genre, year, rating)
-       VALUES($1, $2, $3, $4, $5, $6, $7)`,
+      `INSERT INTO watchlist(user_id, movie_id, title, poster_url, genre, year, rating, synopsis)
+       VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
       [req.session.user.id, movie_id, title, poster_url || null,
-      genre || null, year || null, rating || null]
+       genre || null, year || null, rating || null, synopsis || null]
     );
     res.status(201).json({ message: 'Added to watchlist' });
   } catch (err) {
@@ -264,6 +280,7 @@ app.post('/watchlist', requireAuth, async (req, res) => {
 });
 
 app.delete('/watchlist/:id', requireAuth, async (req, res) => {
+  const tab = req.body._tab === 'watched' ? 'watched' : 'watchlist';
   try {
     await db.none(
       'DELETE FROM watchlist WHERE id = $1 AND user_id = $2',
@@ -272,7 +289,31 @@ app.delete('/watchlist/:id', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
   }
-  res.redirect('/watchlist');
+  res.redirect(`/watchlist?tab=${tab}`);
+});
+
+app.post('/watchlist/:id/watch', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      'UPDATE watchlist SET watched = true WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.session.user.id]
+    );
+  } catch (err) {
+    console.error(err);
+  }
+  res.redirect('/watchlist?tab=watchlist');
+});
+
+app.post('/watchlist/:id/unwatch', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      'UPDATE watchlist SET watched = false WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.session.user.id]
+    );
+  } catch (err) {
+    console.error(err);
+  }
+  res.redirect('/watchlist?tab=watched');
 });
 
 // ─── Wireframes ───────────────────────────────────────────────────────────────
