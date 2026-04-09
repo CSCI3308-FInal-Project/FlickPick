@@ -4,6 +4,44 @@
     <p>Swipe right to save, left to pass.</p>
   </div>
 
+  <div class="filter-bar">
+    <form class="filter-form" method="GET" action="/">
+      <select name="genre" class="filter-select">
+        <option value="">All Genres</option>
+        <option value="28"  {{#if (eq activeFilters.genre "28")}}selected{{/if}}>Action</option>
+        <option value="12"  {{#if (eq activeFilters.genre "12")}}selected{{/if}}>Adventure</option>
+        <option value="16"  {{#if (eq activeFilters.genre "16")}}selected{{/if}}>Animation</option>
+        <option value="35"  {{#if (eq activeFilters.genre "35")}}selected{{/if}}>Comedy</option>
+        <option value="80"  {{#if (eq activeFilters.genre "80")}}selected{{/if}}>Crime</option>
+        <option value="99"  {{#if (eq activeFilters.genre "99")}}selected{{/if}}>Documentary</option>
+        <option value="18"  {{#if (eq activeFilters.genre "18")}}selected{{/if}}>Drama</option>
+        <option value="10751" {{#if (eq activeFilters.genre "10751")}}selected{{/if}}>Family</option>
+        <option value="14"  {{#if (eq activeFilters.genre "14")}}selected{{/if}}>Fantasy</option>
+        <option value="36"  {{#if (eq activeFilters.genre "36")}}selected{{/if}}>History</option>
+        <option value="27"  {{#if (eq activeFilters.genre "27")}}selected{{/if}}>Horror</option>
+        <option value="10402" {{#if (eq activeFilters.genre "10402")}}selected{{/if}}>Music</option>
+        <option value="9648" {{#if (eq activeFilters.genre "9648")}}selected{{/if}}>Mystery</option>
+        <option value="10749" {{#if (eq activeFilters.genre "10749")}}selected{{/if}}>Romance</option>
+        <option value="878" {{#if (eq activeFilters.genre "878")}}selected{{/if}}>Sci-Fi</option>
+        <option value="53"  {{#if (eq activeFilters.genre "53")}}selected{{/if}}>Thriller</option>
+        <option value="10752" {{#if (eq activeFilters.genre "10752")}}selected{{/if}}>War</option>
+        <option value="37"  {{#if (eq activeFilters.genre "37")}}selected{{/if}}>Western</option>
+      </select>
+
+      <select name="minRating" class="filter-select">
+        <option value="">Any Rating</option>
+        <option value="6" {{#if (eq activeFilters.minRating "6")}}selected{{/if}}>6+ ★</option>
+        <option value="7" {{#if (eq activeFilters.minRating "7")}}selected{{/if}}>7+ ★</option>
+        <option value="8" {{#if (eq activeFilters.minRating "8")}}selected{{/if}}>8+ ★</option>
+      </select>
+
+      <button type="submit" class="btn-filter-apply">Apply</button>
+      {{#if (or activeFilters.genre activeFilters.minRating)}}
+        <a href="/" class="btn-filter-clear">Clear</a>
+      {{/if}}
+    </form>
+  </div>
+
   <div class="card-stack">
     <div class="movie-card" id="movieCard">
       <div class="card-poster">
