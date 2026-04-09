@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FlickPick | Profile</title>
-  <link rel="stylesheet" href="profile.css" />
+  <link rel="stylesheet" href="../../resources/css/style.css" />
 </head>
 <body>
   <header class="navbar">
@@ -17,37 +17,43 @@
     </nav>
   </header>
 
-  <main class="profile-container">
+<main class="profile-page">
+  <div class="profile-container">
     <section class="profile-header">
       <h1>My Profile</h1>
-
-      <div class="profile-icon">
-        <div class="icon-head"></div>
-        <div class="icon-body"></div>
-      </div>
-
-      <h2>Username: <span id="username">[Username]</span></h2>
+      <h2>Username: <span id="username">Masone</span></h2>
+      <button type="button" id="editProfileBtn" class="btn-primary">Edit Profile</button>
     </section>
 
     <section class="info-card">
-      <h3>Favorite Genres</h3>
-      <ul id="genreList">
-        <li>x</li>
-        <li>x</li>
-        <li>x</li>
-      </ul>
+      <h3>About Me</h3>
+      <div class="profile-details">
+        <p><strong>Name:</strong> <span id="name">Mason English</span></p>
+        <p><strong>Age:</strong> <span id="age">21</span></p>
+        <p><strong>Gender:</strong> <span id="gender">Male</span></p>
+        <p><strong>Bio:</strong> <span id="bio">I like horror, action, and finding movies to watch with friends.</span></p>
+      </div>
     </section>
+
+<section class="info-card">
+  <h3>Favorite Genres</h3>
+  <p class="genre-help">Separate genres with commas</p>
+  <div class="profile-details">
+    <p><strong>Genres:</strong> <span id="favoriteGenres">Action, Mystery, Thriller</span></p>
+  </div>
+</section>
 
     <section class="info-card">
       <h3>Swipe History Stats</h3>
-      <p>Total Swipes: <span id="totalSwipes">x</span></p>
-      <p>Right Swipes: <span id="rightSwipes">x</span></p>
-      <p>Left Swipes: <span id="leftSwipes">x</span></p>
+      <p>Total Swipes: <span id="totalSwipes">400</span></p>
+      <p>Right Swipes: <span id="rightSwipes">250</span></p>
+      <p>Left Swipes: <span id="leftSwipes">150</span></p>
     </section>
 
     <button id="logoutBtn" class="logout-btn">Logout</button>
-  </main>
+  </div>
+</main>
 
-  <script src="profile.js"></script>
+  <script src="../../resources/js/profile.js"></script>
 </body>
 </html>
