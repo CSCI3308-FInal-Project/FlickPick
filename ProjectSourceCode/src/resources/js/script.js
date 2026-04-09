@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
   showCard(0);
 });
 
+
 // ── Modal ──────────────────────────────────────────────────────────────────────
 
 function openModal(row) {
@@ -142,3 +143,4 @@ function showCardToast(card, text) {
   card.appendChild(toast);
   setTimeout(() => toast.remove(), 2000);
 }
+
