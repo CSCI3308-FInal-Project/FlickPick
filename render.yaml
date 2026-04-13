@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: flickpick
+    runtime: docker
+    dockerfilePath: ./ProjectSourceCode/Dockerfile
+    dockerContext: ./ProjectSourceCode
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DB_HOST
+        fromDatabase:
+          name: flickpick-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: flickpick-db
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: flickpick-db
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: flickpick-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: flickpick-db
+          property: password
+
+databases:
+  - name: flickpick-db
+    databaseName: flickpick
+    user: flickpick
+    plan: free

@@ -4,6 +4,7 @@ const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const pgp = require('pg-promise')();
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 
@@ -328,7 +329,17 @@ app.get('/wireframes/profile', (_, res) => res.render('pages/wireframe-profile')
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
+async function initDb() {
+  const createSql = fs.readFileSync(path.join(__dirname, 'init_data/create.sql'), 'utf8');
+  const insertSql = fs.readFileSync(path.join(__dirname, 'init_data/insert.sql'), 'utf8');
+  await db.none(createSql);
+  await db.none(insertSql);
+  console.log('Database initialized');
+}
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`FlickPick running on port ${PORT}`));
+initDb()
+  .then(() => app.listen(PORT, () => console.log(`FlickPick running on port ${PORT}`)))
+  .catch(err => { console.error('DB init failed:', err); process.exit(1); });
 
 module.exports = app;
