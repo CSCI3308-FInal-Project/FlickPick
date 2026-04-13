@@ -2,6 +2,7 @@ services:
   - type: web
     name: flickpick
     runtime: docker
+    plan: free
     dockerfilePath: ./ProjectSourceCode/Dockerfile
     dockerContext: ./ProjectSourceCode
     envVars:
