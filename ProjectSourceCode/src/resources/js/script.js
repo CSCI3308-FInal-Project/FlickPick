@@ -198,6 +198,10 @@ function openModal(row) {
 }
 
 function renderDetails(data) {
+  const synopsisEl = document.getElementById('modalSynopsis');
+  if (!synopsisEl.textContent && data.synopsis) {
+    synopsisEl.textContent = data.synopsis;
+  }
   document.getElementById('modalDirector').textContent =
     data.director ? `Director: ${data.director}` : '';
   document.getElementById('modalCast').textContent =

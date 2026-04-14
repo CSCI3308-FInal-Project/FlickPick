@@ -328,7 +328,8 @@ app.get('/api/movie/:tmdbId', async (req, res) => {
     const data = await response.json();
     const director = (data.credits?.crew || []).find(p => p.job === 'Director')?.name || null;
     const cast = (data.credits?.cast || []).slice(0, 5).map(p => p.name);
-    res.json({ director, cast });
+    const synopsis = data.overview || null;
+    res.json({ director, cast, synopsis });
   } catch (err) {
     console.error('TMDB detail fetch error:', err);
     res.status(500).json({ error: 'Failed to fetch movie details' });
