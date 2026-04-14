@@ -234,6 +234,8 @@ app.get('/logout', (req, res) => {
 
 app.get('/watchlist', requireAuth, async (req, res) => {
   const activeTab = req.query.tab === 'watched' ? 'watched' : 'watchlist';
+  const PAGE_SIZE = 20;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
   try {
     const all = await db.any(
       'SELECT * FROM watchlist WHERE user_id = $1 ORDER BY added_at DESC',
@@ -241,14 +243,27 @@ app.get('/watchlist', requireAuth, async (req, res) => {
     );
     const watchlist = all.filter(m => !m.watched);
     const watched   = all.filter(m => m.watched);
+
+    const activeArray = activeTab === 'watched' ? watched : watchlist;
+    const totalPages  = Math.max(1, Math.ceil(activeArray.length / PAGE_SIZE));
+    const safePage    = Math.min(page, totalPages);
+    const paged       = activeArray.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
     res.render('pages/watchlist', {
-      user: req.session.user,
-      watchlist,
-      watched,
+      user:           req.session.user,
+      watchlist:      activeTab === 'watchlist' ? paged : watchlist,
+      watched:        activeTab === 'watched'   ? paged : watched,
       watchlistCount: watchlist.length,
       watchedCount:   watched.length,
       tabWatchlist:   activeTab === 'watchlist',
       tabWatched:     activeTab === 'watched',
+      currentPage:    safePage,
+      totalPages,
+      showPagination: totalPages > 1,
+      hasPrev:        safePage > 1,
+      hasNext:        safePage < totalPages,
+      prevPage:       safePage - 1,
+      nextPage:       safePage + 1,
     });
   } catch (err) {
     console.error(err);
@@ -256,7 +271,12 @@ app.get('/watchlist', requireAuth, async (req, res) => {
       user: req.session.user,
       watchlist: [], watched: [],
       watchlistCount: 0, watchedCount: 0,
-      tabWatchlist: true, tabWatched: false,
+      tabWatchlist: activeTab === 'watchlist',
+      tabWatched:   activeTab === 'watched',
+      currentPage: 1, totalPages: 1,
+      showPagination: false,
+      hasPrev: false, hasNext: false,
+      prevPage: 1, nextPage: 1,
     });
   }
 });
