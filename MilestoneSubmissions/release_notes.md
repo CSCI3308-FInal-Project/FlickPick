@@ -46,4 +46,24 @@
 - UAT testing not yet fully executed against all routes
 - Test coverage limited to `/register` and watchlist management so far
 - Group session feature not yet implemented
-- Friends list not yet implemented 
+- Friends list not yet implemented
+
+---
+
+## Week of April 13, 2026 (v0.4)
+
+### Features Implemented
+- Movie synopsis now displayed on watchlist page
+- Director and cast fetched via `/api/movie/:tmdbId` proxy and shown in watchlist detail modal
+- Watchlist dropdown navigation fixed
+- Production deployment stabilized: removed `prestart` script, adjusted Render blueprint for free plan
+
+### Known Issues / Limitations
+- Login only accepts username — email login not yet supported
+- No drag-to-swipe gesture (buttons only)
+- App is not mobile-responsive
+- Group session feature not yet implemented
+- Friends list not yet implemented
+- No swipe history tracking or personalized recommendations
+- Profile page shows hardcoded demo data only
+- No user review system
