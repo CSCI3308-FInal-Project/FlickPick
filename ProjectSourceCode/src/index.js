@@ -336,15 +336,6 @@ app.get('/api/movie/:tmdbId', async (req, res) => {
   }
 });
 
-// ─── Wireframes ───────────────────────────────────────────────────────────────
-
-app.get('/wireframes', (_, res) => res.render('pages/wireframes'));
-app.get('/wireframes/login', (_, res) => res.render('pages/wireframe-login'));
-app.get('/wireframes/register', (_, res) => res.render('pages/wireframe-register'));
-app.get('/wireframes/home', (_, res) => res.render('pages/wireframe-home'));
-app.get('/wireframes/watchlist', (_, res) => res.render('pages/wireframe-watchlist'));
-app.get('/wireframes/group-session', (_, res) => res.render('pages/wireframe-group-session'));
-app.get('/wireframes/profile', (_, res) => res.render('pages/wireframe-profile'));
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
