@@ -17,7 +17,14 @@ const db = pgp({
 });
 
 // Handlebars setup
-app.engine('hbs', engine({ extname: '.hbs', defaultLayout: 'main' }));
+app.engine('hbs', engine({
+  extname: '.hbs',
+  defaultLayout: 'main',
+  helpers: {
+    eq: (a, b) => a === b,
+    or: (a, b) => a || b,
+  },
+}));
 app.set('view engine', 'hbs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -57,17 +64,62 @@ const GENRE_MAP = {
   53: 'Thriller', 10752: 'War', 37: 'Western',
 };
 
+const TMDB_CATEGORIES = ['popular', 'top_rated', 'upcoming', 'now_playing'];
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 app.get('/welcome', (req, res) => {
   res.json({ status: 'success', message: 'Welcome!' });
 });
 
 app.get('/', requireAuth, async (req, res) => {
+  const { genre, minRating } = req.query;
+  const activeFilters = { genre: genre || '', minRating: minRating || '' };
+
   try {
-    const response = await fetch(
-      `https://api.themoviedb.org/3/movie/popular?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=1`
-    );
-    const data = await response.json();
-    const movies = (data.results || []).map(m => ({
+    let combined = [];
+
+    if (genre || minRating) {
+      // Use TMDb discover endpoint when filters are active
+      const params = new URLSearchParams({
+        api_key: process.env.TMDB_API_KEY,
+        language: 'en-US',
+        sort_by: 'popularity.desc',
+        page: Math.floor(Math.random() * 5) + 1,
+      });
+      if (genre)     params.set('with_genres', genre);
+      if (minRating) params.set('vote_average.gte', minRating);
+
+      const r = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
+      const d = await r.json();
+      combined = d.results || [];
+    } else {
+      // No filters — pick 2 random categories on random pages
+      const cats = shuffleArray([...TMDB_CATEGORIES]).slice(0, 2);
+      const page1 = Math.floor(Math.random() * 5) + 1;
+      const page2 = Math.floor(Math.random() * 5) + 1;
+
+      const [r1, r2] = await Promise.all([
+        fetch(`https://api.themoviedb.org/3/movie/${cats[0]}?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page1}`),
+        fetch(`https://api.themoviedb.org/3/movie/${cats[1]}?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page2}`),
+      ]);
+      const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+
+      const seen = new Set();
+      combined = [...(d1.results || []), ...(d2.results || [])].filter(m => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      });
+    }
+
+    const movies = shuffleArray(combined).map(m => ({
       id: String(m.id),
       title: m.title,
       poster: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
@@ -76,10 +128,11 @@ app.get('/', requireAuth, async (req, res) => {
       genres: (m.genre_ids || []).slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean).join(', '),
       synopsis: m.overview || '',
     }));
-    res.render('pages/home', { user: req.session.user, movies: JSON.stringify(movies) });
+
+    res.render('pages/home', { user: req.session.user, movies: JSON.stringify(movies), activeFilters });
   } catch (err) {
     console.error('TMDb fetch error:', err);
-    res.render('pages/home', { user: req.session.user, movies: '[]' });
+    res.render('pages/home', { user: req.session.user, movies: '[]', activeFilters });
   }
 });
 
@@ -179,26 +232,42 @@ app.get('/logout', (req, res) => {
 // ─── Watchlist ────────────────────────────────────────────────────────────────
 
 app.get('/watchlist', requireAuth, async (req, res) => {
+  const activeTab = req.query.tab === 'watched' ? 'watched' : 'watchlist';
   try {
-    const movies = await db.any(
+    const all = await db.any(
       'SELECT * FROM watchlist WHERE user_id = $1 ORDER BY added_at DESC',
       [req.session.user.id]
     );
-    res.render('pages/watchlist', { user: req.session.user, movies, count: movies.length });
+    const watchlist = all.filter(m => !m.watched);
+    const watched   = all.filter(m => m.watched);
+    res.render('pages/watchlist', {
+      user: req.session.user,
+      watchlist,
+      watched,
+      watchlistCount: watchlist.length,
+      watchedCount:   watched.length,
+      tabWatchlist:   activeTab === 'watchlist',
+      tabWatched:     activeTab === 'watched',
+    });
   } catch (err) {
     console.error(err);
-    res.render('pages/watchlist', { user: req.session.user, movies: [], count: 0 });
+    res.render('pages/watchlist', {
+      user: req.session.user,
+      watchlist: [], watched: [],
+      watchlistCount: 0, watchedCount: 0,
+      tabWatchlist: true, tabWatched: false,
+    });
   }
 });
 
 app.post('/watchlist', requireAuth, async (req, res) => {
-  const { movie_id, title, poster_url, genre, year, rating } = req.body;
+  const { movie_id, title, poster_url, genre, year, rating, synopsis } = req.body;
   try {
     await db.none(
-      `INSERT INTO watchlist(user_id, movie_id, title, poster_url, genre, year, rating)
-       VALUES($1, $2, $3, $4, $5, $6, $7)`,
+      `INSERT INTO watchlist(user_id, movie_id, title, poster_url, genre, year, rating, synopsis)
+       VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
       [req.session.user.id, movie_id, title, poster_url || null,
-      genre || null, year || null, rating || null]
+       genre || null, year || null, rating || null, synopsis || null]
     );
     res.status(201).json({ message: 'Added to watchlist' });
   } catch (err) {
@@ -211,6 +280,7 @@ app.post('/watchlist', requireAuth, async (req, res) => {
 });
 
 app.delete('/watchlist/:id', requireAuth, async (req, res) => {
+  const tab = req.body._tab === 'watched' ? 'watched' : 'watchlist';
   try {
     await db.none(
       'DELETE FROM watchlist WHERE id = $1 AND user_id = $2',
@@ -219,7 +289,31 @@ app.delete('/watchlist/:id', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
   }
-  res.redirect('/watchlist');
+  res.redirect(`/watchlist?tab=${tab}`);
+});
+
+app.post('/watchlist/:id/watch', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      'UPDATE watchlist SET watched = true WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.session.user.id]
+    );
+  } catch (err) {
+    console.error(err);
+  }
+  res.redirect('/watchlist?tab=watchlist');
+});
+
+app.post('/watchlist/:id/unwatch', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      'UPDATE watchlist SET watched = false WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.session.user.id]
+    );
+  } catch (err) {
+    console.error(err);
+  }
+  res.redirect('/watchlist?tab=watched');
 });
 
 // ─── Wireframes ───────────────────────────────────────────────────────────────

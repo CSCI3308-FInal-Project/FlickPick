@@ -15,7 +15,9 @@ CREATE TABLE IF NOT EXISTS watchlist (
   genre      VARCHAR(100),
   year       INT,
   rating     NUMERIC(3,1),
+  synopsis   TEXT,
   added_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  watched    BOOLEAN NOT NULL DEFAULT FALSE,
   UNIQUE(user_id, movie_id)
 );
 
