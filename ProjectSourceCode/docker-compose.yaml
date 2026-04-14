@@ -20,6 +20,6 @@ services:
     volumes:
       - ./:/repository
       - /repository/node_modules
-    command: npm run testandrun
+    command: npm start
 volumes:
   flickpick-db:
