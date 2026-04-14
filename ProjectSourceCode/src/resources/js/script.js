@@ -61,7 +61,15 @@ document.addEventListener('DOMContentLoaded', () => {
         await fetch('/watchlist', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ movie_id: m.id, title: m.title, poster_url: m.poster }),
+          body: JSON.stringify({
+            movie_id:  m.id,
+            title:     m.title,
+            poster_url: m.poster,
+            genre:     m.genres,
+            year:      m.year,
+            rating:    m.rating,
+            synopsis:  m.synopsis,
+          }),
         });
       } catch (_) {
         // silently continue — card still advances
@@ -106,8 +114,28 @@ document.addEventListener('DOMContentLoaded', () => {
   showCard(0);
 });
 
+// ── Dropdown ───────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  const dropdown = document.querySelector('.nav-dropdown');
+  if (!dropdown) return;
+
+  const toggle = dropdown.querySelector('.nav-link');
+  toggle.addEventListener('click', e => {
+    e.preventDefault();
+    dropdown.classList.toggle('dropdown-open');
+  });
+
+  document.addEventListener('click', e => {
+    if (!dropdown.contains(e.target)) {
+      dropdown.classList.remove('dropdown-open');
+    }
+  });
+});
 
 // ── Modal ──────────────────────────────────────────────────────────────────────
+
+const detailsCache = {};
 
 function openModal(row) {
   document.getElementById('modalTitle').textContent = row.dataset.title || '';
@@ -140,7 +168,42 @@ function openModal(row) {
     posterEl.textContent = '🎬';
   }
 
+  // Show loading state
+  document.getElementById('modalLoading').style.display = '';
+  document.getElementById('modalDetails').style.display = 'none';
+  document.getElementById('modalError').style.display = 'none';
+
   document.getElementById('modalBackdrop').classList.add('modal-open');
+
+  // Render synopsis immediately from DB data
+  document.getElementById('modalSynopsis').textContent = row.dataset.synopsis || '';
+
+  const tmdbId = row.dataset.movieId;
+
+  if (detailsCache[tmdbId]) {
+    renderDetails(detailsCache[tmdbId]);
+    return;
+  }
+
+  fetch(`/api/movie/${tmdbId}`)
+    .then(r => r.json())
+    .then(data => {
+      detailsCache[tmdbId] = data;
+      renderDetails(data);
+    })
+    .catch(() => {
+      document.getElementById('modalLoading').style.display = 'none';
+      document.getElementById('modalError').style.display = '';
+    });
+}
+
+function renderDetails(data) {
+  document.getElementById('modalDirector').textContent =
+    data.director ? `Director: ${data.director}` : '';
+  document.getElementById('modalCast').textContent =
+    data.cast && data.cast.length ? `Cast: ${data.cast.join(', ')}` : '';
+  document.getElementById('modalLoading').style.display = 'none';
+  document.getElementById('modalDetails').style.display = '';
 }
 
 function closeModal() {

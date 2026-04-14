@@ -34,6 +34,7 @@
         data-poster="{{this.poster_url}}"
         data-year="{{this.year}}"
         data-rating="{{this.rating}}"
+        data-synopsis="{{this.synopsis}}"
         data-watched="false">
 
         <div class="movie-poster">
@@ -94,6 +95,7 @@
         data-poster="{{this.poster_url}}"
         data-year="{{this.year}}"
         data-rating="{{this.rating}}"
+        data-synopsis="{{this.synopsis}}"
         data-watched="true">
 
         <div class="movie-poster">
@@ -150,9 +152,14 @@
       </div>
     </div>
     <div class="modal-body">
-      <div class="modal-placeholder">
-        Synopsis &amp; cast coming soon
-        <span>Full details available once TMDb API is connected</span>
+      <div class="modal-loading" id="modalLoading">Loading details…</div>
+      <div class="modal-details" id="modalDetails" style="display:none">
+        <p class="modal-synopsis" id="modalSynopsis"></p>
+        <p class="modal-director" id="modalDirector"></p>
+        <p class="modal-cast" id="modalCast"></p>
+      </div>
+      <div class="modal-error" id="modalError" style="display:none">
+        Couldn't load details. Try again later.
       </div>
     </div>
     <div class="modal-footer">

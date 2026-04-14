@@ -931,21 +931,26 @@ main {
 
 .modal-body { padding: 1.2rem; }
 
-.modal-placeholder {
-  background: #111;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 1rem;
-  text-align: center;
+.modal-loading,
+.modal-error {
   color: var(--muted);
   font-size: 0.85rem;
-  line-height: 1.6;
+  text-align: center;
+  padding: 0.5rem 0;
 }
-.modal-placeholder span {
-  display: block;
-  font-size: 0.75rem;
-  margin-top: 4px;
-  color: #444;
+.modal-error { color: #e05; }
+
+.modal-synopsis {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 0.75rem;
+}
+.modal-director,
+.modal-cast {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
 }
 
 .modal-footer {
@@ -1105,7 +1110,7 @@ main {
 .nav-dropdown .dropdown-menu {
   display: none;
   position: absolute;
-  top: calc(100% + 8px);
+  top: 100%;
   left: 50%;
   transform: translateX(-50%);
   background: var(--surface);
@@ -1117,8 +1122,7 @@ main {
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 
-.nav-dropdown:hover .dropdown-menu,
-.nav-dropdown:focus-within .dropdown-menu {
+.nav-dropdown.dropdown-open .dropdown-menu {
   display: block;
 }
 

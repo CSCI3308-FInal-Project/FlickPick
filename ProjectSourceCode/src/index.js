@@ -317,6 +317,24 @@ app.post('/watchlist/:id/unwatch', requireAuth, async (req, res) => {
   res.redirect('/watchlist?tab=watched');
 });
 
+// ─── Movie detail proxy ───────────────────────────────────────────────────────
+
+app.get('/api/movie/:tmdbId', async (req, res) => {
+  try {
+    const response = await fetch(
+      `https://api.themoviedb.org/3/movie/${req.params.tmdbId}?append_to_response=credits&api_key=${process.env.TMDB_API_KEY}`
+    );
+    if (!response.ok) throw new Error(`TMDB responded ${response.status}`);
+    const data = await response.json();
+    const director = (data.credits?.crew || []).find(p => p.job === 'Director')?.name || null;
+    const cast = (data.credits?.cast || []).slice(0, 5).map(p => p.name);
+    res.json({ director, cast });
+  } catch (err) {
+    console.error('TMDB detail fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch movie details' });
+  }
+});
+
 // ─── Wireframes ───────────────────────────────────────────────────────────────
 
 app.get('/wireframes', (_, res) => res.render('pages/wireframes'));
