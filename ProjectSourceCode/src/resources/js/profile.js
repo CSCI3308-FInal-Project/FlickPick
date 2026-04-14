@@ -1,5 +1,7 @@
 // Profile Page Scripts
 
+// Buttons and editsx 
+
 document.addEventListener('DOMContentLoaded', () => {
   const passBtn = document.getElementById('passBtn');
   const saveBtn = document.getElementById('saveBtn');
@@ -80,4 +82,30 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = '/login';
     });
   }
+});
+
+// Saving Profile to Database
+
+fetch('/api/profile', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    id,
+    user_id,
+    name,
+    age,
+    gender,
+    bio,
+    favoriteGenres,
+    favoriteMovies
+  })
+})
+.then(response => response.json())
+.then(data => {
+  console.log('Profile saved:', data);
+})
+.catch(error => {
+  console.error('Error saving profile:', error);
 });

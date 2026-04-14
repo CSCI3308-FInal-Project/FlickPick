@@ -633,7 +633,7 @@ main {
   flex-shrink: 0;
 }
 
-<<<<<<< HEAD
+
 /* Profile Style */
 
 .profile-container {
@@ -676,7 +676,7 @@ main {
 .logout-btn:hover {
   background: var(--accent-h);
 }
-=======
+
 /* ── Watchlist ────────────────────────────────────────────────────────────── */
 .watchlist-container {
   max-width: 720px;
@@ -948,4 +948,3 @@ main {
   70%  { opacity: 1; }
   100% { opacity: 0; }
 }
->>>>>>> origin/main

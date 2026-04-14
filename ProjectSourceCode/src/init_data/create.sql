@@ -18,3 +18,14 @@ CREATE TABLE IF NOT EXISTS watchlist (
   added_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(user_id, movie_id)
 );
+
+CREATE TABLE IF NOT EXISTS profile (
+  id              SERIAL PRIMARY KEY,
+  user_id         INT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name            VARCHAR(50),
+  age             INT,
+  gender          VARCHAR(50),
+  bio             TEXT,
+  favorite_movies TEXT,
+  favorite_genres TEXT
+);
