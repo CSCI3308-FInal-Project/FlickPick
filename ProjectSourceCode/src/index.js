@@ -159,9 +159,9 @@ app.get('/login', (req, res) => {
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
-    const user = await db.oneOrNone('SELECT * FROM users WHERE username = $1', [username]);
+    const user = await db.oneOrNone('SELECT * FROM users WHERE username = $1 OR email = $1', [username]);
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.render('pages/login', { message: 'Invalid username or password.' });
+      return res.render('pages/login', { message: 'Invalid username/email or password.' });
     }
     req.session.user = { id: user.id, username: user.username };
     res.redirect('/');
