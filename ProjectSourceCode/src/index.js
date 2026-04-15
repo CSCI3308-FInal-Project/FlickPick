@@ -373,3 +373,34 @@ initDb()
   .catch(err => { console.error('DB init failed:', err); process.exit(1); });
 
 module.exports = app;
+
+// Profile
+
+app.get('/profile', requireAuth, async (req, res) => {
+  try {
+    let profile = await db.oneOrNone(
+      'SELECT * FROM profile WHERE user_id = $1',
+      [req.session.user.id]
+    );
+
+    if (!profile) {
+      await db.none(
+        'INSERT INTO profile(user_id, name, age, gender, bio, favorite_genres, favorite_movies) VALUES($1, $2, $3, $4, $5, $6, $7)',
+        [req.session.user.id, '', null, '', '', '', '']
+      );
+
+      profile = await db.one(
+        'SELECT * FROM profile WHERE user_id = $1',
+        [req.session.user.id]
+      );
+    }
+
+    res.render('pages/profile', {
+      user: req.session.user,
+      profile
+    });
+  } catch (err) {
+    console.error('Profile load error:', err);
+    res.status(500).send('Could not load profile');
+  }
+});
