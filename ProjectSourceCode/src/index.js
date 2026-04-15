@@ -4,6 +4,7 @@ const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const pgp = require('pg-promise')();
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 
@@ -233,6 +234,8 @@ app.get('/logout', (req, res) => {
 
 app.get('/watchlist', requireAuth, async (req, res) => {
   const activeTab = req.query.tab === 'watched' ? 'watched' : 'watchlist';
+  const PAGE_SIZE = 20;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
   try {
     const all = await db.any(
       'SELECT * FROM watchlist WHERE user_id = $1 ORDER BY added_at DESC',
@@ -240,14 +243,27 @@ app.get('/watchlist', requireAuth, async (req, res) => {
     );
     const watchlist = all.filter(m => !m.watched);
     const watched   = all.filter(m => m.watched);
+
+    const activeArray = activeTab === 'watched' ? watched : watchlist;
+    const totalPages  = Math.max(1, Math.ceil(activeArray.length / PAGE_SIZE));
+    const safePage    = Math.min(page, totalPages);
+    const paged       = activeArray.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
     res.render('pages/watchlist', {
-      user: req.session.user,
-      watchlist,
-      watched,
+      user:           req.session.user,
+      watchlist:      activeTab === 'watchlist' ? paged : watchlist,
+      watched:        activeTab === 'watched'   ? paged : watched,
       watchlistCount: watchlist.length,
       watchedCount:   watched.length,
       tabWatchlist:   activeTab === 'watchlist',
       tabWatched:     activeTab === 'watched',
+      currentPage:    safePage,
+      totalPages,
+      showPagination: totalPages > 1,
+      hasPrev:        safePage > 1,
+      hasNext:        safePage < totalPages,
+      prevPage:       safePage - 1,
+      nextPage:       safePage + 1,
     });
   } catch (err) {
     console.error(err);
@@ -255,7 +271,12 @@ app.get('/watchlist', requireAuth, async (req, res) => {
       user: req.session.user,
       watchlist: [], watched: [],
       watchlistCount: 0, watchedCount: 0,
-      tabWatchlist: true, tabWatched: false,
+      tabWatchlist: activeTab === 'watchlist',
+      tabWatched:   activeTab === 'watched',
+      currentPage: 1, totalPages: 1,
+      showPagination: false,
+      hasPrev: false, hasNext: false,
+      prevPage: 1, nextPage: 1,
     });
   }
 });
@@ -316,20 +337,40 @@ app.post('/watchlist/:id/unwatch', requireAuth, async (req, res) => {
   res.redirect('/watchlist?tab=watched');
 });
 
-// ─── Wireframes ───────────────────────────────────────────────────────────────
+// ─── Movie detail proxy ───────────────────────────────────────────────────────
 
-app.get('/wireframes', (_, res) => res.render('pages/wireframes'));
-app.get('/wireframes/login', (_, res) => res.render('pages/wireframe-login'));
-app.get('/wireframes/register', (_, res) => res.render('pages/wireframe-register'));
-app.get('/wireframes/home', (_, res) => res.render('pages/wireframe-home'));
-app.get('/wireframes/watchlist', (_, res) => res.render('pages/wireframe-watchlist'));
-app.get('/wireframes/group-session', (_, res) => res.render('pages/wireframe-group-session'));
-app.get('/wireframes/profile', (_, res) => res.render('pages/wireframe-profile'));
+app.get('/api/movie/:tmdbId', async (req, res) => {
+  try {
+    const response = await fetch(
+      `https://api.themoviedb.org/3/movie/${req.params.tmdbId}?append_to_response=credits&api_key=${process.env.TMDB_API_KEY}`
+    );
+    if (!response.ok) throw new Error(`TMDB responded ${response.status}`);
+    const data = await response.json();
+    const director = (data.credits?.crew || []).find(p => p.job === 'Director')?.name || null;
+    const cast = (data.credits?.cast || []).slice(0, 5).map(p => p.name);
+    const synopsis = data.overview || null;
+    res.json({ director, cast, synopsis });
+  } catch (err) {
+    console.error('TMDB detail fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch movie details' });
+  }
+});
+
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
+async function initDb() {
+  const createSql = fs.readFileSync(path.join(__dirname, 'init_data/create.sql'), 'utf8');
+  const insertSql = fs.readFileSync(path.join(__dirname, 'init_data/insert.sql'), 'utf8');
+  await db.none(createSql);
+  await db.none(insertSql);
+  console.log('Database initialized');
+}
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`FlickPick running on port ${PORT}`));
+initDb()
+  .then(() => app.listen(PORT, () => console.log(`FlickPick running on port ${PORT}`)))
+  .catch(err => { console.error('DB init failed:', err); process.exit(1); });
 
 module.exports = app;
 

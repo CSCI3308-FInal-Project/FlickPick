@@ -24,6 +24,21 @@
         <option value="">All Genres</option>
       </select>
     </div>
+    <div id="bulkBar" class="bulk-bar" style="display:none">
+      <label class="bulk-select-all">
+        <input type="checkbox" id="selectAll" /> Select All
+      </label>
+      <button id="bulkWatchBtn" class="btn-bulk-watch">✓ Mark as Watched</button>
+      <button id="bulkDeleteBtn" class="btn-bulk-delete">✕ Delete Selected</button>
+    </div>
+    <div class="sort-bar">
+      <label for="sortSelect">Sort by:</label>
+      <select id="sortSelect">
+        <option value="default">Date Added</option>
+        <option value="rating">Rating (High → Low)</option>
+        <option value="alpha">Alphabetical (A → Z)</option>
+      </select>
+    </div>
     <div class="movie-list" id="movieList">
       {{#each watchlist}}
       <div class="movie-row"
@@ -34,8 +49,10 @@
         data-poster="{{this.poster_url}}"
         data-year="{{this.year}}"
         data-rating="{{this.rating}}"
+        data-synopsis="{{this.synopsis}}"
         data-watched="false">
 
+        <input type="checkbox" class="row-check" data-id="{{this.id}}" data-title="{{this.title}}" />
         <div class="movie-poster">
           {{#if this.poster_url}}
           <img src="{{this.poster_url}}" alt="{{this.title}} poster" />
@@ -68,6 +85,13 @@
       </div>
       {{/each}}
     </div>
+    {{#if showPagination}}
+    <div class="pagination">
+      {{#if hasPrev}}<a href="/watchlist?tab=watchlist&page={{prevPage}}" class="btn-page">← Prev</a>{{/if}}
+      <span class="page-info">Page {{currentPage}} of {{totalPages}}</span>
+      {{#if hasNext}}<a href="/watchlist?tab=watchlist&page={{nextPage}}" class="btn-page">Next →</a>{{/if}}
+    </div>
+    {{/if}}
     {{else}}
     <div class="empty-state">
       <p>Your watchlist is empty.</p>
@@ -84,6 +108,20 @@
         <option value="">All Genres</option>
       </select>
     </div>
+    <div id="bulkBar" class="bulk-bar" style="display:none">
+      <label class="bulk-select-all">
+        <input type="checkbox" id="selectAll" /> Select All
+      </label>
+      <button id="bulkDeleteBtn" class="btn-bulk-delete">✕ Delete Selected</button>
+    </div>
+    <div class="sort-bar">
+      <label for="sortSelect">Sort by:</label>
+      <select id="sortSelect">
+        <option value="default">Date Added</option>
+        <option value="rating">Rating (High → Low)</option>
+        <option value="alpha">Alphabetical (A → Z)</option>
+      </select>
+    </div>
     <div class="movie-list" id="movieList">
       {{#each watched}}
       <div class="movie-row"
@@ -94,8 +132,10 @@
         data-poster="{{this.poster_url}}"
         data-year="{{this.year}}"
         data-rating="{{this.rating}}"
+        data-synopsis="{{this.synopsis}}"
         data-watched="true">
 
+        <input type="checkbox" class="row-check" data-id="{{this.id}}" data-title="{{this.title}}" />
         <div class="movie-poster">
           {{#if this.poster_url}}
           <img src="{{this.poster_url}}" alt="{{this.title}} poster" />
@@ -128,6 +168,13 @@
       </div>
       {{/each}}
     </div>
+    {{#if showPagination}}
+    <div class="pagination">
+      {{#if hasPrev}}<a href="/watchlist?tab=watched&page={{prevPage}}" class="btn-page">← Prev</a>{{/if}}
+      <span class="page-info">Page {{currentPage}} of {{totalPages}}</span>
+      {{#if hasNext}}<a href="/watchlist?tab=watched&page={{nextPage}}" class="btn-page">Next →</a>{{/if}}
+    </div>
+    {{/if}}
     {{else}}
     <div class="empty-state">
       <p>No watched movies yet.</p>
@@ -150,9 +197,14 @@
       </div>
     </div>
     <div class="modal-body">
-      <div class="modal-placeholder">
-        Synopsis &amp; cast coming soon
-        <span>Full details available once TMDb API is connected</span>
+      <div class="modal-loading" id="modalLoading">Loading details…</div>
+      <div class="modal-details" id="modalDetails" style="display:none">
+        <p class="modal-synopsis" id="modalSynopsis"></p>
+        <p class="modal-director" id="modalDirector"></p>
+        <p class="modal-cast" id="modalCast"></p>
+      </div>
+      <div class="modal-error" id="modalError" style="display:none">
+        Couldn't load details. Try again later.
       </div>
     </div>
     <div class="modal-footer">
