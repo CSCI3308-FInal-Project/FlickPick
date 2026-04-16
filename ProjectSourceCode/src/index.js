@@ -10,7 +10,7 @@ const app = express();
 
 // Database connection
 const db = pgp({
-  host: process.env.POSTGRES_HOST,
+  host: process.env.DB_HOST,
   port: process.env.DB_PORT,
   database: process.env.POSTGRES_DB,
   user: process.env.POSTGRES_USER,
