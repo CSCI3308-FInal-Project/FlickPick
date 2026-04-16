@@ -10,7 +10,7 @@ const app = express();
 
 // Database connection
 const db = pgp({
-  host: process.env.POSTGRES_HOST,
+  host: process.env.DB_HOST,
   port: process.env.DB_PORT,
   database: process.env.POSTGRES_DB,
   user: process.env.POSTGRES_USER,
@@ -140,8 +140,8 @@ app.get('/', requireAuth, async (req, res) => {
     watchlistRows.forEach(r => seenIds.add(String(r.movie_id)));
 
     // Tally genres, actors, and directors from liked swipes
-    const genreCounts    = {};
-    const actorCounts    = {};
+    const genreCounts = {};
+    const actorCounts = {};
     const directorCounts = {};
 
     for (const row of swipeRows) {
@@ -164,14 +164,14 @@ app.get('/', requireAuth, async (req, res) => {
     }
 
     const likedCount = swipeRows.filter(r => r.liked).length;
-    const topGenres  = Object.entries(genreCounts)
+    const topGenres = Object.entries(genreCounts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 2)
       .map(([id]) => id);
 
-    const topActors    = Object.entries(actorCounts).sort((a, b) => b[1] - a[1]).slice(0, 2);
+    const topActors = Object.entries(actorCounts).sort((a, b) => b[1] - a[1]).slice(0, 2);
     const topDirectors = Object.entries(directorCounts).sort((a, b) => b[1] - a[1]).slice(0, 1);
-    const topPeople    = [...topActors, ...topDirectors]
+    const topPeople = [...topActors, ...topDirectors]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 2)
       .map(([id]) => id);
@@ -182,7 +182,7 @@ app.get('/', requireAuth, async (req, res) => {
     if (genre || minRating) {
       // Explicit filters override everything
       const extra = {};
-      if (genre)     extra['with_genres']      = genre;
+      if (genre) extra['with_genres'] = genre;
       if (minRating) extra['vote_average.gte'] = minRating;
       combined = await tmdbDiscover(extra);
 
@@ -202,7 +202,7 @@ app.get('/', requireAuth, async (req, res) => {
       ];
 
       const [genreBatch, peopleBatch, randomBatch] = await Promise.all(fetches);
-      const genreTarget  = Math.round(20 * 0.3);
+      const genreTarget = Math.round(20 * 0.3);
       const peopleTarget = Math.round(20 * 0.3);
       const randomTarget = 20 - genreTarget - peopleTarget;
       const seen = new Set();
@@ -215,7 +215,7 @@ app.get('/', requireAuth, async (req, res) => {
         return added;
       };
       combined = shuffleArray([
-        ...addBatch(shuffleArray(genreBatch),  genreTarget),
+        ...addBatch(shuffleArray(genreBatch), genreTarget),
         ...addBatch(shuffleArray(peopleBatch), peopleTarget),
         ...addBatch(shuffleArray(randomBatch), randomTarget),
       ]);
@@ -237,12 +237,12 @@ app.get('/', requireAuth, async (req, res) => {
     }
 
     const movies = shuffleArray(combined.filter(m => !seenIds.has(String(m.id)))).map(m => ({
-      id:       String(m.id),
-      title:    m.title,
-      poster:   m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
-      year:     m.release_date ? m.release_date.slice(0, 4) : 'N/A',
-      rating:   m.vote_average ? m.vote_average.toFixed(1) : 'N/A',
-      genres:   (m.genre_ids || []).slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean).join(', '),
+      id: String(m.id),
+      title: m.title,
+      poster: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
+      year: m.release_date ? m.release_date.slice(0, 4) : 'N/A',
+      rating: m.vote_average ? m.vote_average.toFixed(1) : 'N/A',
+      genres: (m.genre_ids || []).slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean).join(', '),
       genreIds: (m.genre_ids || []).join(','),
       synopsis: m.overview || '',
     }));
@@ -285,8 +285,8 @@ app.post('/swipe', requireAuth, async (req, res) => {
        VALUES($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (user_id, movie_id) DO NOTHING`,
       [req.session.user.id, String(movie_id), title,
-       genre_ids || '', actor_ids || '', director_id || null,
-       rating || null, liked === true || liked === 'true']
+      genre_ids || '', actor_ids || '', director_id || null,
+      rating || null, liked === true || liked === 'true']
     );
     res.json({ success: true });
   } catch (err) {
@@ -456,7 +456,7 @@ app.post('/watchlist/watch-direct', requireAuth, async (req, res) => {
        VALUES($1, $2, $3, $4, $5, $6, $7, $8, true)
        ON CONFLICT (user_id, movie_id) DO UPDATE SET watched = true`,
       [req.session.user.id, movie_id, title, poster_url || null,
-       genre || null, year || null, rating || null, synopsis || null]
+      genre || null, year || null, rating || null, synopsis || null]
     );
     res.json({ success: true });
   } catch (err) {
@@ -526,13 +526,13 @@ app.get('/api/movie/:tmdbId', async (req, res) => {
     if (!response.ok) throw new Error(`TMDB responded ${response.status}`);
     const data = await response.json();
     const directorPerson = (data.credits?.crew || []).find(p => p.job === 'Director') || null;
-    const castPersons    = (data.credits?.cast || []).slice(0, 5);
+    const castPersons = (data.credits?.cast || []).slice(0, 5);
     res.json({
-      director:   directorPerson?.name  || null,
-      directorId: directorPerson?.id    ? String(directorPerson.id) : null,
-      cast:       castPersons.map(p => p.name),
-      actorIds:   castPersons.map(p => String(p.id)),
-      synopsis:   data.overview || null,
+      director: directorPerson?.name || null,
+      directorId: directorPerson?.id ? String(directorPerson.id) : null,
+      cast: castPersons.map(p => p.name),
+      actorIds: castPersons.map(p => String(p.id)),
+      synopsis: data.overview || null,
     });
   } catch (err) {
     console.error('TMDB detail fetch error:', err);
