@@ -13,7 +13,10 @@
     </div>
     <div class="form-group">
       <label for="password">Password</label>
-      <input type="password" id="password" name="password" required autocomplete="current-password" />
+      <div class="password-wrapper">
+        <input type="password" id="password" name="password" required autocomplete="current-password" />
+        <button type="button" class="toggle-password" onclick="togglePasswordVisibility('password', this)">Show</button>
+      </div>
     </div>
     <button type="submit" class="btn-primary">Sign In</button>
   </form>
@@ -21,3 +24,16 @@
   <p class="switch-auth">Don't have an account? <a href="/register">Register</a></p>
   <p class="switch-auth" style="margin-top: 10px;">Forgot your password? <a href="/forgot-password">Reset it</a></p>
 </div>
+
+<script>
+  function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === "password") {
+      input.type = "text";
+      btn.textContent = "Hide";
+    } else {
+      input.type = "password";
+      btn.textContent = "Show";
+    }
+  }
+</script>
