@@ -94,7 +94,7 @@ app.get('/', requireAuth, async (req, res) => {
         sort_by: 'popularity.desc',
         page: Math.floor(Math.random() * 5) + 1,
       });
-      if (genre)     params.set('with_genres', genre);
+      if (genre) params.set('with_genres', genre);
       if (minRating) params.set('vote_average.gte', minRating);
 
       const r = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
@@ -288,7 +288,7 @@ app.post('/watchlist', requireAuth, async (req, res) => {
       `INSERT INTO watchlist(user_id, movie_id, title, poster_url, genre, year, rating, synopsis)
        VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
       [req.session.user.id, movie_id, title, poster_url || null,
-       genre || null, year || null, rating || null, synopsis || null]
+      genre || null, year || null, rating || null, synopsis || null]
     );
     res.status(201).json({ message: 'Added to watchlist' });
   } catch (err) {

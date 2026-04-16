@@ -21,6 +21,12 @@
         <input type="password" id="password" name="password" required autocomplete="new-password" />
         <button type="button" class="toggle-password" onclick="togglePasswordVisibility('password', this)">Show</button>
       </div>
+      <div id="passwordStrengthContainer" class="password-strength-container">
+        <div class="strength-bar-bg">
+          <div id="strengthBar"></div>
+        </div>
+        <div id="strengthText">Weak</div>
+      </div>
     </div>
     <div class="form-group">
       <label for="confirmPassword">Confirm Password</label>
@@ -58,6 +64,50 @@
 
   confirm_password.addEventListener("input", function () {
     error.style.display = "none";
+  });
+
+  const strengthContainer = document.getElementById("passwordStrengthContainer");
+  const strengthBar = document.getElementById("strengthBar");
+  const strengthText = document.getElementById("strengthText");
+
+  enter_password.addEventListener("input", function() {
+    const val = enter_password.value;
+    if (val.length > 0) {
+      strengthContainer.style.display = "flex";
+    } else {
+      strengthContainer.style.display = "none";
+      return;
+    }
+
+    let strength = 0;
+    if (val.length >= 8) strength += 1;
+    if (val.match(/[a-z]+/)) strength += 1;
+    if (val.match(/[A-Z]+/)) strength += 1;
+    if (val.match(/[0-9]+/)) strength += 1;
+    if (val.match(/[\W_]+/)) strength += 1;
+
+    let width = "0%";
+    let color = "#ff4444";
+    let text = "Weak";
+
+    if (strength <= 2) {
+      width = "33%";
+      color = "#ff4444";
+      text = "Weak";
+    } else if (strength <= 4) {
+      width = "66%";
+      color = "#ffbb33";
+      text = "Medium";
+    } else {
+      width = "100%";
+      color = "#00C851";
+      text = "Strong";
+    }
+
+    strengthBar.style.width = width;
+    strengthBar.style.backgroundColor = color;
+    strengthText.textContent = text;
+    strengthText.style.color = color;
   });
 
   function togglePasswordVisibility(inputId, btn) {
