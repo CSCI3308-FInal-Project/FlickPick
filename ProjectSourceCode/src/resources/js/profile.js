@@ -102,4 +102,36 @@ document.addEventListener('DOMContentLoaded', () =>
     window.location.href = '/logout';
     });
   }
+  const photoInput = document.getElementById('photoInput');
+const profilePhoto = document.getElementById('profilePhoto');
+
+if (photoInput) {
+  photoInput.addEventListener('change', async () => {
+    const file = photoInput.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    try {
+      const res = await fetch('/profile/photo', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+  const newImg = document.createElement('img');
+  newImg.id = 'profilePhoto';
+  newImg.src = data.photoUrl;
+  newImg.alt = 'Profile Photo';
+  newImg.className = 'profile-photo';
+  profilePhoto.replaceWith(newImg);
+} else {
+        alert('Failed to upload photo');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+    }
+  });
+}
 });
