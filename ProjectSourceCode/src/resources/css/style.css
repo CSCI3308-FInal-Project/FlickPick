@@ -8,15 +8,17 @@
 }
 
 :root {
-  --bg:        #0f0f0f;
-  --surface:   #1a1a1a;
-  --border:    #2e2e2e;
-  --accent:    #e50914;
-  --accent-h:  #ff1a24;
-  --text:      #f0f0f0;
-  --muted:     #888;
-  --success:   #22c55e;
-  --radius:    12px;
+  --bg:          #0f0f0f;
+  --surface:     #1a1a1a;
+  --surface-2:   #242424;
+  --border:      #2e2e2e;
+  --accent:      #e50914;
+  --accent-h:    #ff1a24;
+  --accent-gold: #d4a843;
+  --text:        #f0f0f0;
+  --muted:       #888;
+  --success:     #22c55e;
+  --radius:      12px;
   --color-watched: #1db954;
 }
 
@@ -24,6 +26,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Segoe UI', system-ui, sans-serif;
+  line-height: 1.65;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -328,6 +331,7 @@ main {
 .card-stack {
   width: 100%;
   max-width: 380px;
+  position: relative;
 }
 
 .movie-card {
@@ -1747,6 +1751,40 @@ main {
   position: relative;
 }
 
+/* Profile icon button */
+.profile-icon-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  padding: 0;
+}
+.profile-icon-btn:hover {
+  border-color: var(--accent);
+  background: var(--surface-2, #242424);
+}
+.profile-initial {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* Danger item (Logout) */
+.dropdown-item--danger {
+  color: var(--accent) !important;
+}
+.dropdown-item--danger:hover {
+  background: rgba(229, 9, 20, 0.1);
+}
+
 .nav-dropdown .dropdown-menu {
   display: none;
   position: absolute;
@@ -1931,3 +1969,492 @@ main {
   background: var(--surface);
   border: 3px solid var(--accent);
 }
+/* ── Watched shortcut ─────────────────────────────────────────────────────── */
+.btn-watched-shortcut {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.4rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+.btn-watched-shortcut:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ── Undo bar ─────────────────────────────────────────────────────────────── */
+.undo-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  margin-top: 0.75rem;
+  animation: undoSlideUp 0.2s ease;
+  white-space: nowrap;
+}
+.undo-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.btn-undo {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+.btn-undo:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+@keyframes undoSlideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   RESPONSIVE — Desktop layouts (≥768px)
+   Everything below is additive. Mobile layout is unchanged.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Home: two-column layout ───────────────────────────────────────────────── */
+.home-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.home-sidebar {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.home-main {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* Stats strip (visible on both mobile + desktop) */
+.sidebar-stats {
+  display: flex;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 0.5rem;
+  border-right: 1px solid var(--border);
+}
+.stat-item:last-child { border-right: none; }
+.stat-num  { font-size: 1.4rem; font-weight: 700; color: var(--text); line-height: 1; }
+.stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
+
+.btn-watchlist-shortcut {
+  display: block;
+  text-align: center;
+  padding: 0.6rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.9rem;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-watchlist-shortcut:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+@media (min-width: 768px) {
+  .home-container {
+    align-items: flex-start;
+    padding: 2rem 1.5rem;
+  }
+
+  .home-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 2rem;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .home-sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 80px;
+  }
+
+  .home-main {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .card-stack {
+    max-width: 420px;
+    width: 100%;
+  }
+
+  .welcome-banner h1 {
+    font-size: 1.6rem;
+    text-align: left;
+  }
+  .welcome-banner p { text-align: left; }
+
+  .filter-bar { max-width: 100%; }
+  .filter-form { flex-direction: column; align-items: stretch; }
+  .btn-filter-apply { width: 100%; }
+}
+
+/* ── Watchlist: split-panel layout ─────────────────────────────────────────── */
+.watchlist-layout {
+  display: flex;
+  width: 100%;
+}
+
+.watchlist-detail-panel {
+  display: none; /* hidden on mobile */
+}
+
+/* Desktop-only: detail panel appears on row click */
+@media (min-width: 768px) {
+  .watchlist-layout {
+    max-width: 1040px;
+    margin: 0 auto;
+    gap: 0;
+    align-items: flex-start;
+  }
+
+  .watchlist-layout .watchlist-container {
+    max-width: none;
+    flex: 1;
+    min-width: 0;
+    padding-right: 0;
+    transition: padding-right 0.18s ease;
+  }
+
+  .watchlist-layout.panel-open .watchlist-container {
+    padding-right: 1rem;
+  }
+
+  .watchlist-detail-panel {
+    display: flex;
+    flex-direction: column;
+    width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: width 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
+    background: var(--surface-2, #242424);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    flex-shrink: 0;
+    align-self: flex-start;
+    position: sticky;
+    top: 80px;
+  }
+
+  .watchlist-layout.panel-open .watchlist-detail-panel {
+    width: 300px;
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* Detail panel internals */
+  .panel-poster-wrap { width: 100%; }
+  .panel-poster { width: 100%; height: 180px; overflow: hidden; background: #111; }
+  .panel-poster img { width: 100%; height: 100%; object-fit: cover; }
+  .panel-poster-fallback {
+    width: 100%;
+    height: 180px;
+    background: linear-gradient(135deg, #1a1a1a, #111);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .panel-poster-fallback span:first-child { font-size: 2rem; }
+
+  .panel-info {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    overflow-y: auto;
+  }
+  .panel-title  { font-size: 1.1rem; font-weight: 700; margin: 0; }
+  .panel-meta   { font-size: 0.8rem; color: var(--muted); }
+  .panel-rating { font-size: 0.9rem; color: var(--accent-gold, #d4a843); font-weight: 600; }
+  .panel-badges { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0; }
+  .panel-synopsis { font-size: 0.85rem; line-height: 1.6; color: #ccc; }
+  .panel-extra    { font-size: 0.8rem; color: var(--muted); min-height: 1.2em; }
+  .panel-loading  { font-size: 0.8rem; color: var(--muted); font-style: italic; }
+
+  .panel-actions {
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .panel-actions .btn-watch-modal,
+  .panel-actions .btn-remove-modal { width: 100%; text-align: center; }
+
+  /* Selected row highlight */
+  .movie-row.row-selected { border-color: var(--accent); }
+
+  /* Hide Details button on desktop — row click opens panel instead */
+  .desktop-hide-details { display: none; }
+
+  /* Wider rows on desktop */
+  .watchlist-container { padding: 1.5rem; }
+}
+
+/* ── Cinematic movie card ───────────────────────────────────────────────────── */
+
+/* Override card shadow */
+.movie-card {
+  box-shadow: 0 8px 40px rgba(229, 9, 20, 0.12), 0 4px 20px rgba(0,0,0,0.5);
+}
+
+/* Taller poster */
+.card-poster {
+  height: 320px;
+  position: relative;
+}
+
+/* Gradient overlay — bottom 140px fades to bg color */
+.poster-gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 140px;
+  background: linear-gradient(to bottom, transparent, #0f0f0f);
+  pointer-events: none;
+}
+
+/* Title + meta overlaid at bottom of poster */
+.poster-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.75rem 1rem 0.65rem;
+  z-index: 2;
+}
+.poster-overlay .card-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 3px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+.poster-overlay .card-meta {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.75);
+  margin-bottom: 0;
+}
+
+/* Genre badges top-right of poster */
+.poster-badges {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  z-index: 2;
+}
+.poster-badges .genre-badge {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Styled poster fallback — replaces emoji */
+.poster-fallback {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #1e1e1e, #111);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: inherit;
+}
+.poster-fallback-icon {
+  font-size: 2.5rem;
+  color: var(--muted);
+}
+.poster-fallback-title {
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 0 1rem;
+  line-height: 1.4;
+}
+
+/* Synopsis below poster */
+.card-info { padding: 1.4rem; }
+.card-synopsis {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #ccc;
+  letter-spacing: 0.01em;
+}
+
+/* Swipe buttons — larger hit area */
+.card-actions button { padding: 16px; }
+.btn-pass:hover    { background: rgba(255,255,255,0.07); color: var(--text); }
+.btn-save:hover    { background: rgba(229,9,20,0.14); }
+
+/* Watched button */
+.btn-watched {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--color-watched);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.btn-watched:hover { background: rgba(29, 185, 84, 0.14); }
+
+/* End-of-deck empty state */
+.no-more-msg {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--muted);
+}
+.no-more-msg .empty-icon { font-size: 2rem; }
+.no-more-msg strong { color: var(--text); font-size: 1rem; }
+.no-more-msg span   { font-size: 0.9rem; }
+
+/* ── Visual polish ──────────────────────────────────────────────────────────── */
+
+/* focus-visible outline for all interactive elements */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* btn-primary lift on hover */
+.btn-primary:hover {
+  transform: translateY(-1px);
+}
+
+/* Empty state layout (watchlist + home end-of-deck) */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--muted);
+}
+.empty-state .empty-icon { font-size: 2.2rem; margin-bottom: 0.25rem; }
+.empty-state strong { color: var(--text); font-size: 1rem; }
+.empty-state span   { font-size: 0.88rem; }
+
+/* No-results search state */
+.no-results-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--muted);
+}
+.no-results-state .empty-icon { font-size: 1.8rem; }
+.no-results-state strong { color: var(--text); font-size: 0.95rem; }
+
+/* Star ratings use accent-gold */
+.modal-rating { color: var(--accent-gold); }
+
+/* Header — frosted glass */
+.site-header {
+  background: rgba(26, 26, 26, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: none;
+  box-shadow: 0 1px 0 var(--border);
+}
+
+/* Active nav link indicator */
+.nav-active {
+  color: var(--text) !important;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 2px;
+}
+
+/* Dropdown fade-in transition (replaces display:none/block snap) */
+.nav-dropdown .dropdown-menu {
+  display: block !important;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 0.1s ease, transform 0.1s ease;
+  visibility: hidden;
+}
+.nav-dropdown.dropdown-open .dropdown-menu {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  visibility: visible;
+}
+
+/* Modal entrance animation */
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+.modal-backdrop.modal-open .modal {
+  animation: modalIn 0.15s ease forwards;
+}
+
+/* Card fade-in on load (applied via JS — opacity starts at 0) */
+@keyframes cardFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* letter-spacing improvements */
+.movie-title { letter-spacing: 0.01em; }
