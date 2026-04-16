@@ -123,6 +123,32 @@ main {
   border-color: var(--accent);
 }
 
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 3.5rem;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.toggle-password:hover {
+  color: var(--text);
+}
+
 .btn-primary {
   margin-top: 0.4rem;
   background: var(--accent);
