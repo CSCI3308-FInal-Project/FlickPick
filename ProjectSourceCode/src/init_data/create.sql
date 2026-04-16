@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS profile (
   gender          VARCHAR(50),
   bio             TEXT,
   favorite_movies TEXT,
-  favorite_genres TEXT
+  favorite_genres TEXT,
+  photo_url       VARCHAR(500)
 );
 
 CREATE TABLE IF NOT EXISTS friends (

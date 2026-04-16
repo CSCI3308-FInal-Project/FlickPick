@@ -5,6 +5,28 @@ const bcrypt = require('bcryptjs');
 const pgp = require('pg-promise')();
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, 'resources/uploads');
+    fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `user_${req.session?.user?.id || 'unknown'}_${Date.now()}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
 
 const app = express();
 
@@ -505,7 +527,20 @@ app.put('/api/profile', requireAuth, async (req, res) => {
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
-
+app.post('/profile/photo', requireAuth, upload.single('photo'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const photoUrl = `/uploads/${req.file.filename}`;
+  try {
+    await db.none(
+      'UPDATE profile SET photo_url = $1 WHERE user_id = $2',
+      [photoUrl, req.session.user.id]
+    );
+    res.json({ success: true, photoUrl });
+  } catch (err) {
+    console.error('Photo upload error:', err);
+    res.status(500).json({ error: 'Failed to save photo' });
+  }
+});
 async function initDb() {
   const createSql = fs.readFileSync(path.join(__dirname, 'init_data/create.sql'), 'utf8');
   const insertSql = fs.readFileSync(path.join(__dirname, 'init_data/insert.sql'), 'utf8');
