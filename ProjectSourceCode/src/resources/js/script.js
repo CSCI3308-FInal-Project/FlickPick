@@ -70,19 +70,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function recordSwipe(movie, isRight) {
+  // Credits cache so repeat saves on the same movie don't re-fetch
+  const creditsCache = {};
+
+  async function fetchCredits(movieId) {
+    if (creditsCache[movieId]) return creditsCache[movieId];
+    try {
+      const r = await fetch(`/api/movie/${movieId}`);
+      const data = await r.json();
+      creditsCache[movieId] = {
+        actorIds:   data.actorIds   || [],
+        directorId: data.directorId || null,
+      };
+    } catch (_) {
+      creditsCache[movieId] = { actorIds: [], directorId: null };
+    }
+    return creditsCache[movieId];
+  }
+
+  function recordSwipe(m, liked, credits = {}) {
     fetch('/swipe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        movie_id:  movie.id,
-        title:     movie.title,
-        genre_ids: movie.genreIds || '',
-        rating:    parseFloat(movie.rating) || null,
-        liked:     isRight,
+        movie_id:    m.id,
+        title:       m.title,
+        genre_ids:   m.genreIds || '',
+        actor_ids:   (credits.actorIds || []).join(','),
+        director_id: credits.directorId || '',
+        rating:      m.rating,
+        liked,
       }),
-    });
-    // fire-and-forget
+    }).catch(() => {});  // fire-and-forget
   }
 
   function showUndo() {
@@ -105,14 +124,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function onUndo() {
     if (!lastSwiped) return;
-    const { movie, direction, statDelta, undoIndex } = lastSwiped; // capture all before hideUndo nulls lastSwiped
+    const { movie, direction, statDelta, undoIndex } = lastSwiped;
     hideUndo();
     if (direction === 'save' || direction === 'watch') {
       try {
         await fetch(`/watchlist/by-movie/${movie.id}`, { method: 'DELETE' });
       } catch (_) { /* silent */ }
     }
-    // Reverse stats for any direction
     if (statDelta) {
       const reversed = {};
       Object.keys(statDelta).forEach(k => reversed[k] = -statDelta[k]);
@@ -123,7 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
     showCard(index);
   }
 
-  // Wire up the static undo button
   const undoBtn = document.getElementById('undoBtn');
   if (undoBtn) undoBtn.addEventListener('click', onUndo);
 
@@ -141,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (passBtn) {
     passBtn.addEventListener('click', () => {
       const m = movies[index];
-      if (m) recordSwipe(m, false);
+      if (m) recordSwipe(m, false);  // no credits needed for passes
       updateStats({ discovered: 1 });
       advance('pass', { discovered: 1 });
     });
@@ -151,7 +168,9 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', async () => {
       const m = movies[index];
       if (!m) return;
-      recordSwipe(m, true);
+      // Fetch credits before recording so actor/director IDs are captured
+      const credits = await fetchCredits(m.id);
+      recordSwipe(m, true, credits);
       try {
         await fetch('/watchlist', {
           method: 'POST',
