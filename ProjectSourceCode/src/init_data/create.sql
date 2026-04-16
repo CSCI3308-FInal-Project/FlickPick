@@ -43,13 +43,15 @@ CREATE TABLE IF NOT EXISTS friends (
 );
 
 CREATE TABLE IF NOT EXISTS swipe_history (
-  id         SERIAL PRIMARY KEY,
-  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  movie_id   VARCHAR(50) NOT NULL,
-  title      VARCHAR(255),
-  genre_ids  TEXT,
-  rating     NUMERIC(3,1),
-  liked      BOOLEAN NOT NULL,
-  swiped_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  id          SERIAL PRIMARY KEY,
+  user_id     INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  movie_id    VARCHAR(50) NOT NULL,
+  title       VARCHAR(255),
+  genre_ids   TEXT,
+  actor_ids   TEXT,
+  director_id VARCHAR(50),
+  rating      NUMERIC(3,1),
+  liked       BOOLEAN NOT NULL,
+  swiped_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(user_id, movie_id)
 );

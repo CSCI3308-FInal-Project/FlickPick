@@ -107,26 +107,48 @@ app.get('/', requireAuth, async (req, res) => {
   const activeFilters = { genre: genre || '', minRating: minRating || '' };
 
   try {
-    // ── Swipe history: already-seen IDs + liked genre tallies ────────────────
+    // ── Swipe history: already-seen IDs + preference tallies ─────────────────
     const swipeRows = await db.any(
-      'SELECT movie_id, genre_ids, liked FROM swipe_history WHERE user_id = $1',
+      'SELECT movie_id, genre_ids, actor_ids, director_id, liked FROM swipe_history WHERE user_id = $1',
       [req.session.user.id]
     );
 
     const seenIds = new Set(swipeRows.map(r => String(r.movie_id)));
 
-    // Count how many times the user has liked each genre
-    const genreCounts = {};
+    // Tally genres, actors, and directors from liked swipes
+    const genreCounts    = {};
+    const actorCounts    = {};
+    const directorCounts = {};
+
     for (const row of swipeRows) {
-      if (row.liked && row.genre_ids) {
+      if (!row.liked) continue;
+      if (row.genre_ids) {
         row.genre_ids.split(',').forEach(id => {
           const g = id.trim();
           if (g) genreCounts[g] = (genreCounts[g] || 0) + 1;
         });
       }
+      if (row.actor_ids) {
+        row.actor_ids.split(',').forEach(id => {
+          const a = id.trim();
+          if (a) actorCounts[a] = (actorCounts[a] || 0) + 1;
+        });
+      }
+      if (row.director_id) {
+        directorCounts[row.director_id] = (directorCounts[row.director_id] || 0) + 1;
+      }
     }
+
     const likedCount = swipeRows.filter(r => r.liked).length;
     const topGenres  = Object.entries(genreCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([id]) => id);
+
+    // Top person = most liked actor or director (whichever scored highest)
+    const topActors    = Object.entries(actorCounts).sort((a, b) => b[1] - a[1]).slice(0, 2);
+    const topDirectors = Object.entries(directorCounts).sort((a, b) => b[1] - a[1]).slice(0, 1);
+    const topPeople    = [...topActors, ...topDirectors]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 2)
       .map(([id]) => id);
@@ -141,10 +163,11 @@ app.get('/', requireAuth, async (req, res) => {
       if (minRating) extra['vote_average.gte']  = minRating;
       combined = await tmdbDiscover(extra);
 
-    } else if (likedCount >= 5 && topGenres.length > 0) {
-      // Recommendation mode: 70% from top liked genres, 30% random variety
-      const [recommended, random] = await Promise.all([
-        tmdbDiscover({ with_genres: topGenres.join(',') }),
+    } else if (likedCount >= 5 && (topGenres.length > 0 || topPeople.length > 0)) {
+      // Recommendation mode: 40% genre-based, 30% person-based, 30% random variety
+      const fetches = [
+        topGenres.length  ? tmdbDiscover({ with_genres: topGenres.join(',') })         : Promise.resolve([]),
+        topPeople.length  ? tmdbDiscover({ with_people: topPeople.join(',') })         : Promise.resolve([]),
         (async () => {
           const cats = shuffleArray([...TMDB_CATEGORIES]).slice(0, 2);
           const [a, b] = await Promise.all([
@@ -153,18 +176,30 @@ app.get('/', requireAuth, async (req, res) => {
           ]);
           return [...a, ...b];
         })(),
-      ]);
+      ];
 
-      // 70/30 split by index position after dedup
-      const recTarget = Math.ceil(20 * 0.7);
-      const seen = new Set();
-      for (const m of [...recommended, ...random]) {
-        if (!seen.has(m.id)) { seen.add(m.id); combined.push(m); }
-      }
-      // Reorder so recommended films fill the first 70%
-      const recFilms  = combined.filter(m => recommended.some(r => r.id === m.id)).slice(0, recTarget);
-      const fillFilms = combined.filter(m => !recFilms.includes(m)).slice(0, 20 - recFilms.length);
-      combined = shuffleArray([...recFilms, ...fillFilms]);
+      const [genreBatch, peopleBatch, randomBatch] = await Promise.all(fetches);
+
+      // Targets: 30% genre, 30% people, 40% random (out of 20 cards)
+      const genreTarget  = Math.round(20 * 0.3);
+      const peopleTarget = Math.round(20 * 0.3);
+      const randomTarget = 20 - genreTarget - peopleTarget;
+
+      const seen     = new Set();
+      const addBatch = (batch, limit) => {
+        const added = [];
+        for (const m of batch) {
+          if (added.length >= limit) break;
+          if (!seen.has(m.id)) { seen.add(m.id); added.push(m); }
+        }
+        return added;
+      };
+
+      const genrePick  = addBatch(shuffleArray(genreBatch),  genreTarget);
+      const peoplePick = addBatch(shuffleArray(peopleBatch), peopleTarget);
+      const randomPick = addBatch(shuffleArray(randomBatch), randomTarget);
+
+      combined = shuffleArray([...genrePick, ...peoplePick, ...randomPick]);
 
     } else {
       // Not enough history — random shuffle across two categories
@@ -202,13 +237,15 @@ app.get('/', requireAuth, async (req, res) => {
 
 // Record a swipe (called for both pass and save)
 app.post('/swipe', requireAuth, async (req, res) => {
-  const { movie_id, title, genre_ids, rating, liked } = req.body;
+  const { movie_id, title, genre_ids, actor_ids, director_id, rating, liked } = req.body;
   try {
     await db.none(
-      `INSERT INTO swipe_history(user_id, movie_id, title, genre_ids, rating, liked)
-       VALUES($1, $2, $3, $4, $5, $6)
+      `INSERT INTO swipe_history(user_id, movie_id, title, genre_ids, actor_ids, director_id, rating, liked)
+       VALUES($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (user_id, movie_id) DO NOTHING`,
-      [req.session.user.id, String(movie_id), title, genre_ids || '', rating || null, liked === true || liked === 'true']
+      [req.session.user.id, String(movie_id), title,
+       genre_ids || '', actor_ids || '', director_id || null,
+       rating || null, liked === true || liked === 'true']
     );
     res.json({ success: true });
   } catch (err) {
@@ -415,10 +452,15 @@ app.get('/api/movie/:tmdbId', async (req, res) => {
     );
     if (!response.ok) throw new Error(`TMDB responded ${response.status}`);
     const data = await response.json();
-    const director = (data.credits?.crew || []).find(p => p.job === 'Director')?.name || null;
-    const cast = (data.credits?.cast || []).slice(0, 5).map(p => p.name);
-    const synopsis = data.overview || null;
-    res.json({ director, cast, synopsis });
+    const directorPerson = (data.credits?.crew || []).find(p => p.job === 'Director') || null;
+    const castPersons    = (data.credits?.cast || []).slice(0, 5);
+    res.json({
+      director:   directorPerson?.name  || null,
+      directorId: directorPerson?.id    ? String(directorPerson.id) : null,
+      cast:       castPersons.map(p => p.name),
+      actorIds:   castPersons.map(p => String(p.id)),
+      synopsis:   data.overview || null,
+    });
   } catch (err) {
     console.error('TMDB detail fetch error:', err);
     res.status(500).json({ error: 'Failed to fetch movie details' });

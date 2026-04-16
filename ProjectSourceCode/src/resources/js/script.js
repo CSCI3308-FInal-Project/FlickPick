@@ -41,15 +41,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function recordSwipe(m, liked) {
+  // Credits cache so repeat saves on the same movie don't re-fetch
+  const creditsCache = {};
+
+  async function fetchCredits(movieId) {
+    if (creditsCache[movieId]) return creditsCache[movieId];
+    try {
+      const r = await fetch(`/api/movie/${movieId}`);
+      const data = await r.json();
+      creditsCache[movieId] = {
+        actorIds:   data.actorIds   || [],
+        directorId: data.directorId || null,
+      };
+    } catch (_) {
+      creditsCache[movieId] = { actorIds: [], directorId: null };
+    }
+    return creditsCache[movieId];
+  }
+
+  function recordSwipe(m, liked, credits = {}) {
     fetch('/swipe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        movie_id:  m.id,
-        title:     m.title,
-        genre_ids: m.genreIds || '',
-        rating:    m.rating,
+        movie_id:    m.id,
+        title:       m.title,
+        genre_ids:   m.genreIds || '',
+        actor_ids:   (credits.actorIds || []).join(','),
+        director_id: credits.directorId || '',
+        rating:      m.rating,
         liked,
       }),
     }).catch(() => {});  // fire-and-forget
@@ -67,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (passBtn) {
     passBtn.addEventListener('click', () => {
       const m = movies[index];
-      if (m) recordSwipe(m, false);
+      if (m) recordSwipe(m, false);  // no credits needed for passes
       advance('pass');
     });
   }
@@ -76,7 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', async () => {
       const m = movies[index];
       if (!m) return;
-      recordSwipe(m, true);
+      // Fetch credits before recording so actor/director IDs are captured
+      const credits = await fetchCredits(m.id);
+      recordSwipe(m, true, credits);
       try {
         await fetch('/watchlist', {
           method: 'POST',
