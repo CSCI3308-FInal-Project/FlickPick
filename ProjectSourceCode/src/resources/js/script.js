@@ -41,6 +41,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function recordSwipe(m, liked) {
+    fetch('/swipe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        movie_id:  m.id,
+        title:     m.title,
+        genre_ids: m.genreIds || '',
+        rating:    m.rating,
+        liked,
+      }),
+    }).catch(() => {});  // fire-and-forget
+  }
+
   function advance(direction) {
     card.classList.add(direction === 'pass' ? 'swipe-left' : 'swipe-right');
     setTimeout(() => {
@@ -51,25 +65,30 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (passBtn) {
-    passBtn.addEventListener('click', () => advance('pass'));
+    passBtn.addEventListener('click', () => {
+      const m = movies[index];
+      if (m) recordSwipe(m, false);
+      advance('pass');
+    });
   }
 
   if (saveBtn) {
     saveBtn.addEventListener('click', async () => {
       const m = movies[index];
       if (!m) return;
+      recordSwipe(m, true);
       try {
         await fetch('/watchlist', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            movie_id:  m.id,
-            title:     m.title,
+            movie_id:   m.id,
+            title:      m.title,
             poster_url: m.poster,
-            genre:     m.genres,
-            year:      m.year,
-            rating:    m.rating,
-            synopsis:  m.synopsis,
+            genre:      m.genres,
+            year:       m.year,
+            rating:     m.rating,
+            synopsis:   m.synopsis,
           }),
         });
       } catch (_) {
