@@ -1,21 +1,20 @@
 <header class="site-header">
   <nav class="navbar">
-    <a href="/" class="logo">🎬 FlickPick</a>
+    <a href="/" class="logo">FlickPick</a>
     {{#if user}}
     <div class="nav-links">
-      <a href="/" class="nav-link">Home</a>
-      <a href="/watchlist" class="nav-link">Watchlist</a>
-      <a href="/profile" class="nav-link">Profile</a>
-      <a href="/friends" class="nav-link">Friends</a>
-      <div class="nav-dropdown">
-        <a href="/watchlist" class="nav-link">Watchlist ▾</a>
-        <div class="dropdown-menu">
-          <a href="/watchlist?tab=watchlist" class="dropdown-item">My Watchlist</a>
-          <a href="/watchlist?tab=watched" class="dropdown-item">Watched</a>
+      <a href="/" class="nav-link {{#if (eq activePage 'home')}}nav-active{{/if}}">Home</a>
+      <a href="/watchlist" class="nav-link {{#if (eq activePage 'watchlist')}}nav-active{{/if}}">Watchlist</a>
+      <div class="nav-dropdown profile-dropdown">
+        <button class="profile-icon-btn" aria-label="Account menu">
+          <span class="profile-initial">{{user.username.[0]}}</span>
+        </button>
+        <div class="dropdown-menu profile-menu">
+          <a href="/profile" class="dropdown-item">My Profile</a>
+          <a href="/friends" class="dropdown-item">Friends</a>
+          <a href="/logout" class="dropdown-item dropdown-item--danger">Logout</a>
         </div>
       </div>
-      <a href="/profile" class="nav-link">{{user.username}}</a>
-      <a href="/logout" class="nav-link">Logout</a>
     </div>
     {{/if}}
   </nav>
