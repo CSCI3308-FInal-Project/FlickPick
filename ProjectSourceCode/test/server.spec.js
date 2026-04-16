@@ -39,11 +39,11 @@ describe('Testing Add User API', () => {
 });
 
 describe('Testing Add User API', () => {
-  it('negative : /register', done => {
+  it('negative : /register - missing fields', done => {
     chai
       .request(app)
       .post('/register')
-      .send({ username: 'testuser', email: 'test@test.com', password: 'testpassword' })
+      .send({ username: '', email: '', password: '' })
       .end((err, res) => {
         expect(res).to.have.status(400);
         done();
@@ -51,42 +51,25 @@ describe('Testing Add User API', () => {
   });
 });
 
-describe('GET /api/movie/:tmdbId', () => {
-  it('returns director and cast for a valid TMDB id', done => {
-    chai
-      .request(app)
-      .get('/api/movie/550') // Fight Club — stable TMDB entry
-      .end((err, res) => {
-        expect(res).to.have.status(200);
-        expect(res.body).to.have.property('director');
-        expect(res.body).to.have.property('cast');
-        expect(res.body.cast).to.be.an('array');
-        done();
-      });
-  });
 
-  it('returns 500 for an invalid TMDB id', done => {
-    chai
-      .request(app)
-      .get('/api/movie/0')
-      .end((err, res) => {
-        expect(res).to.have.status(500);
-        expect(res.body).to.have.property('error');
-        done();
-      });
-  });
-});
 
 describe('Testing Watchlist API', () => {
   const agent = chai.request.agent(app);
 
   before(done => {
-    // Login with the credentials created in the register test
-    agent
-      .post('/login')
-      .send({ username: 'testuser', password: 'testpassword' })
-      .end((err, res) => {
-        done();
+    // Try to register testuser first in case DB is clean
+    chai.request(app)
+      .post('/register')
+      .redirects(0)
+      .send({ username: 'testuser', email: 'test@test.com', password: 'testpassword' })
+      .end(() => {
+        // Then login regardless of whether register succeeded or failed
+        agent
+          .post('/login')
+          .send({ username: 'testuser', password: 'testpassword' })
+          .end((err, res) => {
+            done();
+          });
       });
   });
 

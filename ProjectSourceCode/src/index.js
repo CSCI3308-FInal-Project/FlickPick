@@ -137,21 +137,7 @@ app.get('/', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/watchlist', requireAuth, async (req, res) => {
-  const { movie_id, title, poster_url } = req.body;
-  try {
-    await db.none(
-      `INSERT INTO watchlist(user_id, movie_id, title, poster_url)
-       VALUES($1, $2, $3, $4)
-       ON CONFLICT (user_id, movie_id) DO NOTHING`,
-      [req.session.user.id, movie_id, title, poster_url || null]
-    );
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Watchlist insert error:', err);
-    res.status(500).json({ success: false });
-  }
-});
+
 
 app.get('/login', (req, res) => {
   res.render('pages/login');
@@ -178,6 +164,9 @@ app.get('/register', (req, res) => {
 
 app.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
+  if (!username || !email || !password) {
+    return res.status(400).render('pages/register', { message: 'All fields are required.' });
+  }
   try {
     const hashed = await bcrypt.hash(password, 10);
     await db.none(
