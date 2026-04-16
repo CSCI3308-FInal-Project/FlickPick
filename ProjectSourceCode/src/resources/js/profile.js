@@ -2,111 +2,104 @@
 
 // Buttons and editsx 
 
-document.addEventListener('DOMContentLoaded', () => {
-  const passBtn = document.getElementById('passBtn');
-  const saveBtn = document.getElementById('saveBtn');
-  const card = document.querySelector('.movie-card');
-
-  if (passBtn && card) {
-    passBtn.addEventListener('click', () => {
-      card.classList.add('swipe-left');
-      setTimeout(() => card.classList.remove('swipe-left'), 400);
-    });
-  }
-
-  if (saveBtn && card) {
-    saveBtn.addEventListener('click', () => {
-      card.classList.add('swipe-right');
-      setTimeout(() => card.classList.remove('swipe-right'), 400);
-    });
-  }
-
+document.addEventListener('DOMContentLoaded', () => 
+  {
   const editProfileBtn = document.getElementById('editProfileBtn');
   const logoutBtn = document.getElementById('logoutBtn');
 
   let editing = false;
 
-  if (editProfileBtn) {
-    editProfileBtn.addEventListener('click', () => {
+  if (editProfileBtn) 
+    {
+    editProfileBtn.addEventListener('click', async () => {
       const usernameEl = document.getElementById('username');
       const nameEl = document.getElementById('name');
       const ageEl = document.getElementById('age');
       const genderEl = document.getElementById('gender');
       const bioEl = document.getElementById('bio');
       const favoriteGenresEl = document.getElementById('favoriteGenres');
+      const favoriteMoviesEl = document.getElementById('favoriteMovies');
 
-      if (!usernameEl || !nameEl || !ageEl || !genderEl || !bioEl || !favoriteGenresEl) {
+      if (
+        !usernameEl ||
+        !nameEl ||
+        !ageEl ||
+        !genderEl ||
+        !bioEl ||
+        !favoriteGenresEl ||
+        !favoriteMoviesEl
+      ) 
+      {
         return;
       }
 
-      if (!editing) {
-      const usernameText = usernameEl.textContent.trim();
-      const nameText = nameEl.textContent.trim();
-      const ageText = ageEl.textContent.trim();
-      const genderText = genderEl.textContent.trim();
-      const bioText = bioEl.textContent.trim();
-      const favoriteGenresText = favoriteGenresEl.textContent.trim();
+      if (!editing) 
+        {
+        usernameEl.innerHTML = `<input type="text" id="usernameInput" value="${usernameEl.textContent.trim()}">`;
+        nameEl.innerHTML = `<input type="text" id="nameInput" value="${nameEl.textContent.trim()}">`;
+        ageEl.innerHTML = `<input type="number" id="ageInput" value="${ageEl.textContent.trim()}">`;
+        genderEl.innerHTML = `<input type="text" id="genderInput" value="${genderEl.textContent.trim()}">`;
+        bioEl.innerHTML = `<textarea id="bioInput">${bioEl.textContent.trim()}</textarea>`;
+        favoriteGenresEl.innerHTML = `<input type="text" id="favoriteGenresInput" value="${favoriteGenresEl.textContent.trim()}">`;
+        favoriteMoviesEl.innerHTML = `<input type="text" id="favoriteMoviesInput" value="${favoriteMoviesEl.textContent.trim()}">`;
 
-      usernameEl.innerHTML = `<input type="text" id="usernameInput" value="${usernameText}">`;
-      nameEl.innerHTML = `<input type="text" id="nameInput" value="${nameText}">`;
-      ageEl.innerHTML = `<input type="number" id="ageInput" value="${ageText}">`;
-      genderEl.innerHTML = `<input type="text" id="genderInput" value="${genderText}">`;
-      bioEl.innerHTML = `<textarea id="bioInput">${bioText}</textarea>`;
-      favoriteGenresEl.innerHTML = `<input type="text" id="favoriteGenresInput" value="${favoriteGenresText}">`;
+        editProfileBtn.textContent = 'Save Profile';
+        editing = true;
+        return;
+      }
 
-      editProfileBtn.textContent = 'Save Profile';
-      editing = true;
-      } 
-      else {
-      const usernameInput = document.getElementById('usernameInput');
-      const nameInput = document.getElementById('nameInput');
-      const ageInput = document.getElementById('ageInput');
-      const genderInput = document.getElementById('genderInput');
-      const bioInput = document.getElementById('bioInput');
-      const favoriteGenresInput = document.getElementById('favoriteGenresInput');
+      const profileData = 
+      {
+        username: document.getElementById('usernameInput').value.trim(),
+        name: document.getElementById('nameInput').value.trim(),
+        age: document.getElementById('ageInput').value.trim(),
+        gender: document.getElementById('genderInput').value.trim(),
+        bio: document.getElementById('bioInput').value.trim(),
+        favoriteGenres: document.getElementById('favoriteGenresInput').value.trim(),
+        favoriteMovies: document.getElementById('favoriteMoviesInput').value.trim()
+      };
 
-      usernameEl.textContent = usernameInput.value.trim() || 'Masone';
-      nameEl.textContent = nameInput.value.trim() || 'Not provided';
-      ageEl.textContent = ageInput.value.trim() || 'Not provided';
-      genderEl.textContent = genderInput.value.trim() || 'Not provided';
-      bioEl.textContent = bioInput.value.trim() || 'No bio added.';
-      favoriteGenresEl.textContent = favoriteGenresInput.value.trim() || 'None selected';
+      try 
+      {
+        const response = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: 
+          {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(profileData)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) 
+        {
+        throw new Error(data.message || 'Failed to save profile');
+        }
+
+      usernameEl.textContent = profileData.username || 'No username';
+      nameEl.textContent = profileData.name || 'Not provided';
+      ageEl.textContent = profileData.age || 'Not provided';
+      genderEl.textContent = profileData.gender || 'Not provided';
+      bioEl.textContent = profileData.bio || 'No bio added.';
+      favoriteGenresEl.textContent = profileData.favoriteGenres || 'None selected';
+      favoriteMoviesEl.textContent = profileData.favoriteMovies || 'None selected';
 
       editProfileBtn.textContent = 'Edit Profile';
       editing = false;
+      } 
+      catch (error) 
+      {
+      console.error('Error saving profile:', error);
+      alert('Could not save profile.');
       }
     });
   }
 
-  if (logoutBtn) {
+  if (logoutBtn) 
+  {
     logoutBtn.addEventListener('click', () => {
-      window.location.href = '/login';
+    window.location.href = '/logout';
     });
   }
-});
-
-// Saving Profile to Database
-
-fetch('/api/profile', {
-  method: 'PUT',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    id,
-    user_id,
-    name,
-    age,
-    gender,
-    bio,
-    favoriteGenres,
-    favoriteMovies
-  })
-})
-.then(response => response.json())
-.then(data => {
-  console.log('Profile saved:', data);
-})
-.catch(error => {
-  console.error('Error saving profile:', error);
 });

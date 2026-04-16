@@ -357,6 +357,164 @@ app.get('/api/movie/:tmdbId', async (req, res) => {
 });
 
 
+
+// Friends page
+app.get('/friends', requireAuth, async (req, res) => {
+  try {
+    const friends = await db.any(
+      `
+      SELECT
+        u.username,
+        p.name,
+        p.bio,
+        p.favorite_movies,
+        p.favorite_genres
+      FROM friends f
+      JOIN users u
+        ON u.id = CASE
+          WHEN f.requester_id = $1 THEN f.addressee_id
+          ELSE f.requester_id
+        END
+      LEFT JOIN profile p ON p.user_id = u.id
+      WHERE (f.requester_id = $1 OR f.addressee_id = $1)
+        AND f.status = 'accepted'
+      ORDER BY u.username
+      `,
+      [req.session.user.id]
+    );
+
+    res.render('pages/friends', {
+      user: req.session.user,
+      friends
+    });
+  } catch (err) {
+    console.error('Friends load error:', err);
+    res.status(500).send('Could not load friends');
+  }
+});
+
+// Add friend
+app.post('/friends/add', requireAuth, async (req, res) => {
+  const { username } = req.body;
+
+  try {
+    const targetUser = await db.oneOrNone(
+      'SELECT id, username FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (targetUser.id === req.session.user.id) {
+      return res.status(400).json({ success: false, message: 'You cannot add yourself' });
+    }
+
+    const smallerId = Math.min(req.session.user.id, targetUser.id);
+    const largerId = Math.max(req.session.user.id, targetUser.id);
+
+    await db.none(
+      `
+      INSERT INTO friends (requester_id, addressee_id, status)
+      VALUES ($1, $2, 'accepted')
+      ON CONFLICT (requester_id, addressee_id) DO NOTHING
+      `,
+      [smallerId, largerId]
+    );
+
+    res.json({ success: true, message: 'Friend added successfully' });
+  } catch (err) {
+    console.error('Add friend error:', err);
+    res.status(500).json({ success: false, message: 'Could not add friend' });
+  }
+});
+
+// View friends profile
+app.get('/users/:username', requireAuth, async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const viewedUser = await db.oneOrNone(
+      'SELECT id, username FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (!viewedUser) {
+      return res.status(404).send('User not found');
+    }
+
+    const profile = await db.oneOrNone(
+      'SELECT * FROM profile WHERE user_id = $1',
+      [viewedUser.id]
+    );
+
+    res.render('pages/userprofile', {
+      user: req.session.user,
+      viewedUser,
+      profile: profile || {}
+    });
+  } catch (err) {
+    console.error('User profile load error:', err);
+    res.status(500).send('Could not load user profile');
+  }
+});
+
+
+app.put('/api/profile', requireAuth, async (req, res) => {
+  const {
+    username,
+    name,
+    age,
+    gender,
+    bio,
+    favoriteGenres,
+    favoriteMovies
+  } = req.body;
+
+  try {
+    await db.none(
+      `
+      UPDATE users
+      SET username = $1
+      WHERE id = $2
+      `,
+      [username, req.session.user.id]
+    );
+
+    await db.none(
+      `
+      INSERT INTO profile (user_id, name, age, gender, bio, favorite_genres, favorite_movies)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        name = EXCLUDED.name,
+        age = EXCLUDED.age,
+        gender = EXCLUDED.gender,
+        bio = EXCLUDED.bio,
+        favorite_genres = EXCLUDED.favorite_genres,
+        favorite_movies = EXCLUDED.favorite_movies
+      `,
+      [
+        req.session.user.id,
+        name || null,
+        age ? parseInt(age, 10) : null,
+        gender || null,
+        bio || null,
+        favoriteGenres || null,
+        favoriteMovies || null
+      ]
+    );
+
+    req.session.user.username = username;
+
+    res.json({ success: true, message: 'Profile updated successfully' });
+  } catch (err) {
+    console.error('Profile save error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update profile' });
+  }
+});
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 async function initDb() {

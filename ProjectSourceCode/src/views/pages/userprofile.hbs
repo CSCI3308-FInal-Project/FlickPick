@@ -1,0 +1,25 @@
+<main class="profile-page">
+  <div class="profile-container">
+    <section class="profile-header">
+      <h1>{{viewedUser.username}}'s Profile</h1>
+    </section>
+
+    <section class="info-card">
+      <h3>About</h3>
+      <div class="profile-details">
+        <p><strong>Name:</strong> {{profile.name}}</p>
+        <p><strong>Age:</strong> {{profile.age}}</p>
+        <p><strong>Gender:</strong> {{profile.gender}}</p>
+        <p><strong>Bio:</strong> {{profile.bio}}</p>
+      </div>
+    </section>
+
+    <section class="info-card">
+      <h3>Favorites</h3>
+      <div class="profile-details">
+        <p><strong>Movies:</strong> {{profile.favorite_movies}}</p>
+        <p><strong>Genres:</strong> {{profile.favorite_genres}}</p>
+      </div>
+    </section>
+  </div>
+</main>

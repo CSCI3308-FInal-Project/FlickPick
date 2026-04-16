@@ -1,0 +1,43 @@
+<main class="profile-page">
+  <div class="profile-container">
+    <section class="profile-header">
+      <h1>Friends</h1>
+    </section>
+
+    <section class="info-card">
+      <h3>Add Friend</h3>
+      <form id="addFriendForm" class="profile-details">
+        <input
+          type="text"
+          id="friendUsername"
+          name="username"
+          placeholder="Enter username"
+          required
+        />
+        <button type="submit" class="btn-primary">Add Friend</button>
+      </form>
+    </section>
+
+    <section class="info-card">
+      <h3>Your Friends</h3>
+      {{#if friends.length}}
+        <div class="profile-details">
+          {{#each friends}}
+            <div class="friend-card">
+              <p><strong>Username:</strong> {{this.username}}</p>
+              <p><strong>Name:</strong> {{this.name}}</p>
+              <p><strong>Bio:</strong> {{this.bio}}</p>
+              <p><strong>Favorite Movies:</strong> {{this.favorite_movies}}</p>
+              <p><strong>Favorite Genres:</strong> {{this.favorite_genres}}</p>
+              <a href="/users/{{this.username}}" class="btn-primary">View Profile</a>
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <p>No friends yet.</p>
+      {{/if}}
+    </section>
+  </div>
+</main>
+
+<script src="/js/friends.js"></script>

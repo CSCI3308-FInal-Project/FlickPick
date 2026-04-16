@@ -31,3 +31,13 @@ CREATE TABLE IF NOT EXISTS profile (
   favorite_movies TEXT,
   favorite_genres TEXT
 );
+
+CREATE TABLE IF NOT EXISTS friends (
+  id SERIAL PRIMARY KEY,
+  requester_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  addressee_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'accepted',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (requester_id, addressee_id),
+  CHECK (requester_id <> addressee_id)
+);

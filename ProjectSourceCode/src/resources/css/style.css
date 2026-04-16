@@ -1795,6 +1795,7 @@ main {
   background: rgba(34, 197, 94, 0.22);
 }
 
+<<<<<<< HEAD
 /* Pagination */
 .pagination {
   display: flex;
@@ -1880,4 +1881,17 @@ main {
   cursor: pointer;
   flex-shrink: 0;
   accent-color: var(--accent);
+}
+
+.friend-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.friend-card a {
+  display: inline-block;
+  margin-top: 10px;
 }
