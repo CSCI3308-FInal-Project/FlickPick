@@ -55,3 +55,7 @@ CREATE TABLE IF NOT EXISTS swipe_history (
   swiped_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(user_id, movie_id)
 );
+
+-- Migrate existing swipe_history tables that predate actor/director tracking
+ALTER TABLE swipe_history ADD COLUMN IF NOT EXISTS actor_ids   TEXT;
+ALTER TABLE swipe_history ADD COLUMN IF NOT EXISTS director_id VARCHAR(50);
