@@ -1,0 +1,23 @@
+Notes: April 14, 2026
+1. Decisions made
+The website needs to be posted on render this week
+We need the friends list before we can work on the group session
+We also need to fix the test cases so they run with the correct docker compose command
+
+2. Alternative actions/options discussed
+Instead of clicking a movie using a button we could change it to a swipe feature
+
+3. Follow-up items, including agreed-on roles and responsibilities
+We need an algorithm that pulls random movies
+The friends list should be in the form of another page
+We need to add features to register
+Alitzel: group session
+Matt: watchlist, user story, outside API setup for movies (movies showing up, remove movie, like button, trailer, etc.).
+Page: test cases and front end
+Rohith: home page
+Mason: friends list.
+
+Additional Tasks
+We need to expand the deck to get a wider range of movies
+Profile could include personalization
+We also need to check if the app displays well on a phone
