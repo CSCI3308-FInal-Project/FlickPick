@@ -221,14 +221,14 @@
       </div>
     </div>
     <div class="modal-body">
-      <div class="modal-loading" id="modalLoading">Loading details…</div>
+      <div class="modal-loading" id="modalLoading"><span class="spinner"></span></div>
       <div class="modal-details" id="modalDetails" style="display:none">
         <p class="modal-synopsis" id="modalSynopsis"></p>
         <p class="modal-director" id="modalDirector"></p>
         <p class="modal-cast" id="modalCast"></p>
       </div>
       <div class="modal-error" id="modalError" style="display:none">
-        Couldn't load details. Try again later.
+        Couldn't load details. <button class="btn-retry-modal" onclick="retryDetails()">Retry</button>
       </div>
     </div>
     <div class="modal-footer">

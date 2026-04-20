@@ -1961,6 +1961,43 @@ main {
 .photo-upload-link:hover {
   color: var(--accent-h);
 }
+
+/* ── Profile stats grid ───────────────────────────────────────────────────── */
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.profile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.85rem 0.5rem;
+  border-right: 1px solid var(--border);
+}
+.profile-stat:last-child { border-right: none; }
+
+.profile-top-genres {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.top-genres-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.top-genres-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .profile-photo-placeholder {
   display: flex;
   align-items: center;
@@ -2458,3 +2495,57 @@ main {
 
 /* letter-spacing improvements */
 .movie-title { letter-spacing: 0.01em; }
+
+/* ── Spinner ──────────────────────────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--muted);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+/* ── Home error banner ────────────────────────────────────────────────────── */
+.home-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #2a1010;
+  border: 1px solid #5a1a1a;
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  color: #f87171;
+  font-size: 0.9rem;
+}
+.home-error-banner .error-icon { font-size: 1.1rem; }
+.btn-retry-home {
+  margin-left: auto;
+  padding: 0.3rem 0.9rem;
+  background: none;
+  border: 1px solid #f87171;
+  border-radius: 6px;
+  color: #f87171;
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+.btn-retry-home:hover { background: rgba(248,113,113,0.1); color: #f87171; }
+
+/* ── Modal retry button ───────────────────────────────────────────────────── */
+.btn-retry-modal {
+  background: none;
+  border: 1px solid #e05;
+  border-radius: 5px;
+  color: #e05;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-left: 0.4rem;
+}
+.btn-retry-modal:hover { background: rgba(238,0,85,0.1); }

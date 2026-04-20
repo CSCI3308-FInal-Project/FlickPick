@@ -294,6 +294,7 @@ app.get('/', requireAuth, async (req, res) => {
       savedCount: 0,
       watchedCount: 0,
       discoveredCount: 0,
+      fetchError: true,
     });
   }
 });
@@ -672,7 +673,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     username,
     name,
     age,
-    gender,
+    country,
     bio,
     favoriteGenres,
     favoriteMovies
@@ -680,23 +681,19 @@ app.put('/api/profile', requireAuth, async (req, res) => {
 
   try {
     await db.none(
-      `
-      UPDATE users
-      SET username = $1
-      WHERE id = $2
-      `,
+      `UPDATE users SET username = $1 WHERE id = $2`,
       [username, req.session.user.id]
     );
 
     await db.none(
       `
-      INSERT INTO profile (user_id, name, age, gender, bio, favorite_genres, favorite_movies)
+      INSERT INTO profile (user_id, name, age, country, bio, favorite_genres, favorite_movies)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (user_id)
       DO UPDATE SET
         name = EXCLUDED.name,
         age = EXCLUDED.age,
-        gender = EXCLUDED.gender,
+        country = EXCLUDED.country,
         bio = EXCLUDED.bio,
         favorite_genres = EXCLUDED.favorite_genres,
         favorite_movies = EXCLUDED.favorite_movies
@@ -705,7 +702,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
         req.session.user.id,
         name || null,
         age ? parseInt(age, 10) : null,
-        gender || null,
+        country ? country.toUpperCase().slice(0, 2) : null,
         bio || null,
         favoriteGenres || null,
         favoriteMovies || null
@@ -765,17 +762,49 @@ app.get('/profile', requireAuth, async (req, res) => {
         'INSERT INTO profile(user_id, name, age, gender, bio, favorite_genres, favorite_movies) VALUES($1, $2, $3, $4, $5, $6, $7)',
         [req.session.user.id, '', null, '', '', '', '']
       );
-
-      profile = await db.one(
-        'SELECT * FROM profile WHERE user_id = $1',
-        [req.session.user.id]
-      );
+      profile = await db.one('SELECT * FROM profile WHERE user_id = $1', [req.session.user.id]);
     }
+
+    // Swipe stats
+    const swipeRows = await db.any(
+      'SELECT genre_ids, liked FROM swipe_history WHERE user_id = $1',
+      [req.session.user.id]
+    );
+    const totalSwipes = swipeRows.length;
+    const rightSwipes = swipeRows.filter(r => r.liked).length;
+    const leftSwipes = totalSwipes - rightSwipes;
+
+    // Top 3 genres from liked swipes
+    const genreCounts = {};
+    for (const row of swipeRows) {
+      if (!row.liked || !row.genre_ids) continue;
+      row.genre_ids.split(',').forEach(id => {
+        const g = id.trim();
+        if (g) genreCounts[g] = (genreCounts[g] || 0) + 1;
+      });
+    }
+    const topGenres = Object.entries(genreCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([id]) => GENRE_MAP[id])
+      .filter(Boolean);
+
+    // Watchlist counts
+    const [savedResult, watchedResult] = await Promise.all([
+      db.one('SELECT COUNT(*) FROM watchlist WHERE user_id = $1 AND watched = false', [req.session.user.id]),
+      db.one('SELECT COUNT(*) FROM watchlist WHERE user_id = $1 AND watched = true', [req.session.user.id]),
+    ]);
 
     res.render('pages/profile', {
       user: req.session.user,
       profile,
       activePage: 'profile',
+      totalSwipes,
+      rightSwipes,
+      leftSwipes,
+      topGenres,
+      savedCount: parseInt(savedResult.count, 10),
+      watchedCount: parseInt(watchedResult.count, 10),
     });
   } catch (err) {
     console.error('Profile load error:', err);

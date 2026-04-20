@@ -35,7 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!card) return;
     if (i >= movies.length) {
       card.style.display = 'none';
-      if (noMore) noMore.style.display = 'flex';
+      const errBanner = document.getElementById('homeErrorBanner');
+      if (window.FLICKPICK_FETCH_ERROR && errBanner) {
+        errBanner.style.display = 'flex';
+        if (noMore) noMore.style.display = 'none';
+      } else {
+        if (noMore) noMore.style.display = 'flex';
+      }
       return;
     }
     card.style.display = '';
@@ -273,6 +279,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   showCard(0);
 
+  // ── Keyboard navigation (1.6) ───────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input, textarea, select')) return;
+    if (e.key === 'Escape') {
+      closeModal();
+    } else if (e.key === 'ArrowLeft') {
+      if (passBtn && index < movies.length) passBtn.click();
+    } else if (e.key === 'ArrowRight') {
+      if (saveBtn && index < movies.length) saveBtn.click();
+    }
+  });
+
   // ── Bulk actions ────────────────────────────────────────────────────────────
   const bulkBar      = document.getElementById('bulkBar');
   const selectAllCb  = document.getElementById('selectAll');
@@ -378,8 +396,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Modal ──────────────────────────────────────────────────────────────────────
 
 const detailsCache = {};
+let _currentModalRow = null;
 
 function openModal(row) {
+  _currentModalRow = row;
   document.getElementById('modalTitle').textContent = row.dataset.title || '';
   document.getElementById('modalRating').textContent = row.dataset.rating ? `★ ${row.dataset.rating}` : '';
   document.getElementById('modalMeta').textContent =
@@ -460,6 +480,22 @@ function closeModalOnBackdrop(e) {
   if (e.target === document.getElementById('modalBackdrop')) closeModal();
 }
 
+function retryDetails() {
+  if (!_currentModalRow) return;
+  const tmdbId = _currentModalRow.dataset.movieId;
+  delete detailsCache[tmdbId];
+  document.getElementById('modalLoading').style.display = '';
+  document.getElementById('modalDetails').style.display = 'none';
+  document.getElementById('modalError').style.display = 'none';
+  fetch(`/api/movie/${tmdbId}`)
+    .then(r => r.json())
+    .then(data => { detailsCache[tmdbId] = data; renderDetails(data); })
+    .catch(() => {
+      document.getElementById('modalLoading').style.display = 'none';
+      document.getElementById('modalError').style.display = '';
+    });
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function showCardToast(card, text) {
@@ -529,7 +565,7 @@ function showCardToast(card, text) {
     panelSynopsis.textContent = synopsis;
 
     // Extra (director/runtime) — clear and fetch async
-    panelExtra.innerHTML = '<span class="panel-loading">Loading…</span>';
+    panelExtra.innerHTML = '<span class="spinner"></span>';
 
     // Action buttons
     panelActions.innerHTML = `
