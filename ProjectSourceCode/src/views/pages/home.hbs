@@ -75,12 +75,12 @@
               <span class="poster-fallback-title" id="cardFallbackTitle"></span>
             </div>
             <div class="poster-gradient"></div>
-            <div class="poster-badges" id="cardBadges"></div>
             <div class="poster-overlay">
               <h2 class="card-title" id="cardTitle"></h2>
               <p class="card-meta" id="cardMeta"></p>
             </div>
           </div>
+          <div class="poster-badges" id="cardBadges"></div>
           <div class="card-info">
             <p class="card-synopsis" id="cardSynopsis"></p>
           </div>
@@ -96,6 +96,11 @@
           <strong>You've seen everything</strong>
           <span><a href="/">Refresh for a new set of movies.</a></span>
         </div>
+        <div class="home-error-banner" id="homeErrorBanner" style="display:none">
+          <span class="error-icon">⚠</span>
+          <span>Could not load movies — check your connection.</span>
+          <a href="/" class="btn-retry-home">Retry</a>
+        </div>
       </div>
       <div class="undo-bar" id="undoBar" style="display:none">
         <span class="undo-label">Undo last swipe?</span>
@@ -109,4 +114,5 @@
 <script>
   window.FLICKPICK_MOVIES = {{{ movies }}};
   window.FLICKPICK_STATS = { saved: {{savedCount}}, watched: {{watchedCount}}, discovered: {{discoveredCount}} };
+  window.FLICKPICK_FETCH_ERROR = {{#if fetchError}}true{{else}}false{{/if}};
 </script>

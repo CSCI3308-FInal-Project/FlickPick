@@ -52,7 +52,8 @@
           data-rating="{{this.rating}}"
           data-synopsis="{{this.synopsis}}"
           data-watched="false"
-          data-added-at="{{this.added_at}}">
+          data-added-at="{{this.added_at}}"
+          data-friends="{{this.friendsJson}}">
 
           <input type="checkbox" class="row-check" data-id="{{this.id}}" data-title="{{this.title}}" />
           <div class="movie-poster">
@@ -138,7 +139,8 @@
           data-rating="{{this.rating}}"
           data-synopsis="{{this.synopsis}}"
           data-watched="true"
-          data-added-at="{{this.added_at}}">
+          data-added-at="{{this.added_at}}"
+          data-friends="{{this.friendsJson}}">
 
           <input type="checkbox" class="row-check" data-id="{{this.id}}" data-title="{{this.title}}" />
           <div class="movie-poster">
@@ -203,6 +205,8 @@
       <div class="panel-badges" id="panelBadges"></div>
       <p class="panel-synopsis" id="panelSynopsis"></p>
       <div class="panel-extra" id="panelExtra"></div>
+      <div id="panelFriends"></div>
+      <div class="panel-reviews-section" id="panelReviews" style="display:none"></div>
     </div>
     <div class="panel-actions" id="panelActions"></div>
   </aside>
@@ -221,14 +225,16 @@
       </div>
     </div>
     <div class="modal-body">
-      <div class="modal-loading" id="modalLoading">Loading details…</div>
+      <div class="modal-loading" id="modalLoading"><span class="spinner"></span></div>
       <div class="modal-details" id="modalDetails" style="display:none">
         <p class="modal-synopsis" id="modalSynopsis"></p>
         <p class="modal-director" id="modalDirector"></p>
         <p class="modal-cast" id="modalCast"></p>
       </div>
+      <div id="modalFriends"></div>
+      <div id="modalReviews" class="modal-reviews-section" style="display:none"></div>
       <div class="modal-error" id="modalError" style="display:none">
-        Couldn't load details. Try again later.
+        Couldn't load details. <button class="btn-retry-modal" onclick="retryDetails()">Retry</button>
       </div>
     </div>
     <div class="modal-footer">

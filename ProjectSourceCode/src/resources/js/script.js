@@ -35,7 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!card) return;
     if (i >= movies.length) {
       card.style.display = 'none';
-      if (noMore) noMore.style.display = 'flex';
+      const errBanner = document.getElementById('homeErrorBanner');
+      if (window.FLICKPICK_FETCH_ERROR && errBanner) {
+        errBanner.style.display = 'flex';
+        if (noMore) noMore.style.display = 'none';
+      } else {
+        if (noMore) noMore.style.display = 'flex';
+      }
       return;
     }
     card.style.display = '';
@@ -210,6 +216,15 @@ document.addEventListener('DOMContentLoaded', () => {
             synopsis:   m.synopsis,
           }),
         });
+        if (typeof openReviewModal === 'function') {
+          openReviewModal({
+            movieId: String(m.id),
+            title:   m.title,
+            year:    m.year,
+            genre:   m.genres,
+            poster:  m.poster,
+          });
+        }
       } catch (_) { /* silently continue */ }
       updateStats({ watched: 1, discovered: 1 });
       advance('watch', { watched: 1, discovered: 1 });
@@ -273,6 +288,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   showCard(0);
 
+  // ── Keyboard navigation (1.6) ───────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input, textarea, select')) return;
+    if (e.key === 'Escape') {
+      closeModal();
+    } else if (e.key === 'ArrowLeft') {
+      if (passBtn && index < movies.length) passBtn.click();
+    } else if (e.key === 'ArrowRight') {
+      if (saveBtn && index < movies.length) saveBtn.click();
+    }
+  });
+
   // ── Bulk actions ────────────────────────────────────────────────────────────
   const bulkBar      = document.getElementById('bulkBar');
   const selectAllCb  = document.getElementById('selectAll');
@@ -315,7 +342,11 @@ document.addEventListener('DOMContentLoaded', () => {
       for (const cb of checked) {
         await fetch(`/watchlist/${cb.dataset.id}/watch`, { method: 'POST' });
       }
-      window.location.reload();
+      const n = checked.length;
+      showPageToast(
+        `${n} movie${n !== 1 ? 's' : ''} marked as watched. <a href="/watchlist?tab=watched" style="color:var(--accent);font-weight:600;text-decoration:none">Head to Watched list</a> to review them individually.`
+      );
+      setTimeout(() => window.location.reload(), 1200);
     });
   }
 
@@ -375,11 +406,122 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// ── Review Modal ───────────────────────────────────────────────────────────
+
+(function () {
+  const backdrop    = document.getElementById('reviewBackdrop');
+  const starRow     = document.getElementById('reviewStarRow');
+  const starCount   = document.getElementById('reviewStarCount');
+  const textarea    = document.getElementById('reviewText');
+  const submitBtn   = document.getElementById('reviewSubmitBtn');
+  const skipBtn     = document.getElementById('reviewSkipBtn');
+  const posterEl    = document.getElementById('reviewPoster');
+  const titleEl     = document.getElementById('reviewModalTitle');
+  const metaEl      = document.getElementById('reviewModalMeta');
+
+  if (!backdrop) return;
+
+  let _reviewMovie  = null; // { movieId, title, year, genre, poster }
+  let _selectedStar = 0;
+  let _reviewId     = null; // set when editing existing review
+
+  const stars = starRow ? [...starRow.querySelectorAll('.star')] : [];
+
+  function paintStars(val) {
+    stars.forEach(s => {
+      s.classList.toggle('filled', parseInt(s.dataset.val, 10) <= val);
+    });
+    if (starCount) starCount.textContent = val ? `${val} / 10` : '';
+  }
+
+  stars.forEach(s => {
+    s.addEventListener('mouseenter', () => paintStars(parseInt(s.dataset.val, 10)));
+    s.addEventListener('mouseleave', () => paintStars(_selectedStar));
+    s.addEventListener('click', () => {
+      _selectedStar = parseInt(s.dataset.val, 10);
+      paintStars(_selectedStar);
+    });
+  });
+
+  window.openReviewModal = function ({ movieId, title, year, genre, poster, prefillRating, prefillText, reviewId } = {}) {
+    _reviewMovie  = { movieId, title, year, genre };
+    _selectedStar = prefillRating || 0;
+    _reviewId     = reviewId || null;
+
+    if (titleEl) titleEl.textContent = title || '';
+    if (metaEl)  metaEl.textContent  = [year, genre].filter(Boolean).join(' · ');
+
+    if (posterEl) {
+      if (poster) {
+        posterEl.innerHTML = `<img src="${poster}" alt="${title} poster" />`;
+      } else {
+        posterEl.textContent = '🎬';
+      }
+    }
+
+    paintStars(_selectedStar);
+    if (textarea)  textarea.value = prefillText || '';
+    if (submitBtn) submitBtn.textContent = reviewId ? 'Update Review' : 'Submit Review';
+
+    backdrop.classList.add('review-open');
+    if (textarea) textarea.focus();
+  };
+
+  window.closeReviewModal = function () {
+    backdrop.classList.remove('review-open');
+    _reviewMovie  = null;
+    _selectedStar = 0;
+    _reviewId     = null;
+    paintStars(0);
+    if (textarea)  textarea.value = '';
+  };
+
+  if (skipBtn) skipBtn.addEventListener('click', closeReviewModal);
+
+  backdrop.addEventListener('click', e => {
+    if (e.target === backdrop) closeReviewModal();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && backdrop.classList.contains('review-open')) {
+      closeReviewModal();
+    }
+  });
+
+  if (submitBtn) {
+    submitBtn.addEventListener('click', async () => {
+      if (!_selectedStar) {
+        submitBtn.textContent = 'Please pick a rating first';
+        setTimeout(() => {
+          submitBtn.textContent = _reviewId ? 'Update Review' : 'Submit Review';
+        }, 1500);
+        return;
+      }
+      const body = {
+        movie_id:    _reviewMovie.movieId,
+        title:       _reviewMovie.title,
+        rating:      _selectedStar,
+        review_text: textarea ? textarea.value.trim() : '',
+      };
+      try {
+        await fetch('/reviews', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      } catch (_) { /* silently continue */ }
+      closeReviewModal();
+    });
+  }
+})();
+
 // ── Modal ──────────────────────────────────────────────────────────────────────
 
 const detailsCache = {};
+let _currentModalRow = null;
 
 function openModal(row) {
+  _currentModalRow = row;
   document.getElementById('modalTitle').textContent = row.dataset.title || '';
   document.getElementById('modalRating').textContent = row.dataset.rating ? `★ ${row.dataset.rating}` : '';
   document.getElementById('modalMeta').textContent =
@@ -398,9 +540,27 @@ function openModal(row) {
   if (isWatched) {
     watchForm.action = `/watchlist/${id}/unwatch`;
     watchBtn.textContent = '↩ Move to Watchlist';
+    watchForm.onsubmit = null;
   } else {
     watchForm.action = `/watchlist/${id}/watch`;
     watchBtn.textContent = '✓ Mark as Watched';
+    watchForm.onsubmit = async (e) => {
+      e.preventDefault();
+      try {
+        await fetch(`/watchlist/${id}/watch`, { method: 'POST' });
+        closeModal();
+        if (typeof openReviewModal === 'function') {
+          openReviewModal({
+            movieId: row.dataset.movieId,
+            title:   row.dataset.title,
+            year:    row.dataset.year,
+            genre:   row.dataset.genre,
+            poster:  row.dataset.poster,
+          });
+        }
+        row.dataset.watched = 'true';
+      } catch (_) { /* silently continue */ }
+    };
   }
 
   const posterEl = document.getElementById('modalPoster');
@@ -419,6 +579,8 @@ function openModal(row) {
 
   // Render synopsis immediately from DB data
   document.getElementById('modalSynopsis').textContent = row.dataset.synopsis || '';
+  document.getElementById('modalFriends').innerHTML = renderFriendsSection(row.dataset.friends);
+  loadAndRenderReviews(row.dataset.movieId, isWatched, document.getElementById('modalReviews'));
 
   const tmdbId = row.dataset.movieId;
 
@@ -460,7 +622,132 @@ function closeModalOnBackdrop(e) {
   if (e.target === document.getElementById('modalBackdrop')) closeModal();
 }
 
+function retryDetails() {
+  if (!_currentModalRow) return;
+  const tmdbId = _currentModalRow.dataset.movieId;
+  delete detailsCache[tmdbId];
+  document.getElementById('modalLoading').style.display = '';
+  document.getElementById('modalDetails').style.display = 'none';
+  document.getElementById('modalError').style.display = 'none';
+  fetch(`/api/movie/${tmdbId}`)
+    .then(r => r.json())
+    .then(data => { detailsCache[tmdbId] = data; renderDetails(data); })
+    .catch(() => {
+      document.getElementById('modalLoading').style.display = 'none';
+      document.getElementById('modalError').style.display = '';
+    });
+}
+
+function renderFriendsSection(friendsJson) {
+  let friends = [];
+  try { friends = JSON.parse(friendsJson || '[]'); } catch (e) { friends = []; }
+  if (!friends.length) return '';
+
+  const lines = friends.map(f => {
+    const cls   = f.watched ? 'friend-status-watched' : 'friend-status-watchlist';
+    const label = f.watched ? 'watched' : 'watchlist';
+    const initial = (f.username || '?')[0].toUpperCase();
+    const safeName = f.username.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<div class="friend-line">
+      <div class="friend-initial">${initial}</div>
+      <span class="friend-name">${safeName}</span>
+      <span class="friend-status-tag ${cls}">${label}</span>
+    </div>`;
+  }).join('');
+
+  return `<div class="friends-section">
+    <div class="friends-section-label">Friends</div>
+    ${lines}
+  </div>`;
+}
+
+function renderStars(rating) {
+  return Array.from({ length: 10 }, (_, i) =>
+    `<span class="rstar${i < rating ? '' : ' empty'}">★</span>`
+  ).join('');
+}
+
+async function loadAndRenderReviews(movieId, isWatched, containerEl) {
+  if (!containerEl) return;
+  if (!isWatched) { containerEl.style.display = 'none'; return; }
+
+  let yourReviewHtml = '';
+  let friendsHtml    = '';
+
+  try {
+    const [myRes, friendRes] = await Promise.all([
+      fetch(`/api/reviews?movie_id=${encodeURIComponent(movieId)}`).then(r => r.json()),
+      fetch(`/api/movie/${encodeURIComponent(movieId)}/reviews`).then(r => r.json()),
+    ]);
+
+    const myReview = myRes.review;
+    if (myReview) {
+      const text = myReview.review_text
+        ? `<p class="your-review-text">"${myReview.review_text}"</p>`
+        : '';
+      yourReviewHtml = `
+        <div class="modal-reviews-label">Your Review</div>
+        <div class="your-review-row">
+          <div class="your-review-stars">${renderStars(myReview.rating)}</div>
+          <span class="your-review-score">${myReview.rating} / 10</span>
+          <button class="btn-edit-review"
+            onclick="openReviewModal({movieId:'${movieId}',title:'${(myReview.title||'').replace(/'/g,"\\'")}',prefillRating:${myReview.rating},prefillText:'${(myReview.review_text||'').replace(/'/g,"\\'").replace(/\n/g,' ')}',reviewId:${myReview.id}})">
+            Edit
+          </button>
+        </div>
+        ${text}
+      `;
+    } else {
+      yourReviewHtml = `
+        <div class="modal-reviews-label">Your Review</div>
+        <button class="btn-write-review"
+          onclick="openReviewModal({movieId:'${movieId}'})">
+          ✎ Write a Review
+        </button>
+      `;
+    }
+
+    const friends = friendRes.reviews || [];
+    if (friends.length) {
+      const rows = friends.map(f => {
+        const initial = (f.username || '?')[0].toUpperCase();
+        const safe    = (f.username || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        const text    = f.review_text
+          ? `<p class="friend-review-text">"${f.review_text}"</p>`
+          : '';
+        return `
+          <div class="friend-review-row">
+            <div class="friend-review-initial">${initial}</div>
+            <div class="friend-review-body">
+              <div class="friend-review-meta">
+                <span class="friend-review-username">${safe}</span>
+                <div class="your-review-stars">${renderStars(f.rating)}</div>
+                <span class="your-review-score">${f.rating}/10</span>
+              </div>
+              ${text}
+            </div>
+          </div>`;
+      }).join('');
+      friendsHtml = `<div class="modal-reviews-label" style="margin-top:0.75rem">Friends' Reviews</div>${rows}`;
+    }
+  } catch (_) { /* silently skip reviews on error */ }
+
+  containerEl.innerHTML = yourReviewHtml + friendsHtml;
+  containerEl.style.display = yourReviewHtml || friendsHtml ? '' : 'none';
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+function showPageToast(html) {
+  const existing = document.getElementById('pageToast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.id = 'pageToast';
+  toast.className = 'page-toast';
+  toast.innerHTML = html;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
 
 function showCardToast(card, text) {
   const existing = card.querySelector('.card-toast');
@@ -487,6 +774,7 @@ function showCardToast(card, text) {
   const panelBadges   = document.getElementById('panelBadges');
   const panelSynopsis = document.getElementById('panelSynopsis');
   const panelExtra    = document.getElementById('panelExtra');
+  const panelFriends  = document.getElementById('panelFriends');
   const panelActions  = document.getElementById('panelActions');
 
   const detailsCache = window._flickpickDetailsCache || (window._flickpickDetailsCache = {});
@@ -529,24 +817,52 @@ function showCardToast(card, text) {
     panelSynopsis.textContent = synopsis;
 
     // Extra (director/runtime) — clear and fetch async
-    panelExtra.innerHTML = '<span class="panel-loading">Loading…</span>';
+    panelExtra.innerHTML = '<span class="spinner"></span>';
+    panelFriends.innerHTML = renderFriendsSection(row.dataset.friends);
+    loadAndRenderReviews(movieId, isWatched, document.getElementById('panelReviews'));
 
     // Action buttons
-    panelActions.innerHTML = `
-      <form method="POST" action="/watchlist/${id}/${isWatched ? 'unwatch' : 'watch'}" style="display:contents">
-        <button type="submit" class="btn-watch-modal">
-          ${isWatched ? '↩ Move to Watchlist' : '✓ Mark as Watched'}
-        </button>
-      </form>
-      <form method="POST" action="/watchlist/${id}" style="display:contents">
-        <input type="hidden" name="_method" value="DELETE" />
-        <input type="hidden" name="_tab" value="${isWatched ? 'watched' : 'watchlist'}" />
-        <button type="submit" class="btn-remove-modal"
-          onclick="return confirm('Remove \'${title.replace(/'/g, "\\'")}\\' from your list?')">
-          ✕ Remove
-        </button>
-      </form>
-    `;
+    if (isWatched) {
+      panelActions.innerHTML = `
+        <form method="POST" action="/watchlist/${id}/unwatch" style="display:contents">
+          <button type="submit" class="btn-watch-modal">↩ Move to Watchlist</button>
+        </form>
+        <form method="POST" action="/watchlist/${id}" style="display:contents">
+          <input type="hidden" name="_method" value="DELETE" />
+          <input type="hidden" name="_tab" value="watched" />
+          <button type="submit" class="btn-remove-modal"
+            onclick="return confirm('Remove \'${title.replace(/'/g, "\\'")}\\' from your list?')">
+            ✕ Remove
+          </button>
+        </form>
+      `;
+    } else {
+      panelActions.innerHTML = `
+        <button class="btn-watch-modal" id="panelWatchNowBtn">✓ Mark as Watched</button>
+        <form method="POST" action="/watchlist/${id}" style="display:contents">
+          <input type="hidden" name="_method" value="DELETE" />
+          <input type="hidden" name="_tab" value="watchlist" />
+          <button type="submit" class="btn-remove-modal"
+            onclick="return confirm('Remove \'${title.replace(/'/g, "\\'")}\\' from your list?')">
+            ✕ Remove
+          </button>
+        </form>
+      `;
+      const panelWatchNowBtn = document.getElementById('panelWatchNowBtn');
+      if (panelWatchNowBtn) {
+        panelWatchNowBtn.addEventListener('click', async () => {
+          try {
+            await fetch(`/watchlist/${id}/watch`, { method: 'POST' });
+            if (typeof openReviewModal === 'function') {
+              openReviewModal({ movieId, title, year, genre, poster });
+            }
+            row.classList.remove('row-selected');
+            layout.classList.remove('panel-open');
+            row.dataset.watched = 'true';
+          } catch (_) { /* silently continue */ }
+        });
+      }
+    }
 
     // Highlight selected row
     document.querySelectorAll('.movie-row').forEach(r => r.classList.remove('row-selected'));
