@@ -2579,7 +2579,7 @@ main {
 
 .friend-name { flex: 1; color: var(--text); }
 
-.status-tag {
+.friend-status-tag {
   font-size: 0.7rem;
   padding: 2px 8px;
   border-radius: 99px;
