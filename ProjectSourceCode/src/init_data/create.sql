@@ -64,3 +64,15 @@ ALTER TABLE swipe_history ADD COLUMN IF NOT EXISTS director_id VARCHAR(50);
 -- Migrate profile table: replace gender with country
 ALTER TABLE profile ADD COLUMN IF NOT EXISTS country VARCHAR(2);
 ALTER TABLE profile DROP COLUMN IF EXISTS gender;
+
+CREATE TABLE IF NOT EXISTS reviews (
+  id          SERIAL PRIMARY KEY,
+  user_id     INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  movie_id    VARCHAR(50) NOT NULL,
+  title       VARCHAR(255),
+  rating      INT NOT NULL CHECK (rating >= 1 AND rating <= 10),
+  review_text TEXT,
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, movie_id)
+);

@@ -46,6 +46,8 @@ app.engine('hbs', engine({
   helpers: {
     eq: (a, b) => a === b,
     or: (a, b) => a || b,
+    times: n => Array.from({ length: n }, (_, i) => i + 1),
+    lte: (a, b) => a <= b,
   },
 }));
 app.set('view engine', 'hbs');
@@ -413,19 +415,52 @@ app.get('/watchlist', requireAuth, async (req, res) => {
     const watchlist = all.filter(m => !m.watched);
     const watched = all.filter(m => m.watched);
 
-    const activeArray = activeTab === 'watched' ? watched : watchlist;
+    // Batch-fetch which friends also have these movies
+    const movieIds = all.map(r => r.movie_id);
+    const friendActivityMap = {};
+    if (movieIds.length > 0) {
+      const friendRows = await db.any(
+        `SELECT w.movie_id, u.username, w.watched
+         FROM friends f
+         JOIN users u
+           ON u.id = CASE
+             WHEN f.requester_id = $1 THEN f.addressee_id
+             ELSE f.requester_id
+           END
+         JOIN watchlist w ON w.user_id = u.id
+         WHERE (f.requester_id = $1 OR f.addressee_id = $1)
+           AND f.status = 'accepted'
+           AND w.movie_id = ANY($2)`,
+        [req.session.user.id, movieIds]
+      );
+      for (const row of friendRows) {
+        if (!friendActivityMap[row.movie_id]) friendActivityMap[row.movie_id] = [];
+        friendActivityMap[row.movie_id].push({ username: row.username, watched: row.watched });
+      }
+    }
+
+    // Attach serialized friend data to each row
+    const attachFriends = rows => rows.map(r => ({
+      ...r,
+      friendsJson: JSON.stringify(friendActivityMap[r.movie_id] || [])
+    }));
+
+    const watchlistWithFriends = attachFriends(watchlist);
+    const watchedWithFriends   = attachFriends(watched);
+
+    const activeArray = activeTab === 'watched' ? watchedWithFriends : watchlistWithFriends;
     const totalPages = Math.max(1, Math.ceil(activeArray.length / PAGE_SIZE));
     const safePage = Math.min(page, totalPages);
     const paged = activeArray.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
     res.render('pages/watchlist', {
       user: req.session.user,
-      watchlist: activeTab === 'watchlist' ? paged : watchlist,
-      watched: activeTab === 'watched' ? paged : watched,
+      watchlist: activeTab === 'watchlist' ? paged : watchlistWithFriends,
+      watched:   activeTab === 'watched'   ? paged : watchedWithFriends,
       watchlistCount: watchlist.length,
-      watchedCount: watched.length,
+      watchedCount:   watched.length,
       tabWatchlist: activeTab === 'watchlist',
-      tabWatched: activeTab === 'watched',
+      tabWatched:   activeTab === 'watched',
       currentPage: safePage,
       totalPages,
       showPagination: totalPages > 1,
@@ -442,7 +477,7 @@ app.get('/watchlist', requireAuth, async (req, res) => {
       watchlist: [], watched: [],
       watchlistCount: 0, watchedCount: 0,
       tabWatchlist: activeTab === 'watchlist',
-      tabWatched: activeTab === 'watched',
+      tabWatched:   activeTab === 'watched',
       currentPage: 1, totalPages: 1,
       showPagination: false,
       hasPrev: false, hasNext: false,
@@ -521,10 +556,11 @@ app.post('/watchlist/:id/watch', requireAuth, async (req, res) => {
       'UPDATE watchlist SET watched = true WHERE id = $1 AND user_id = $2',
       [req.params.id, req.session.user.id]
     );
+    res.json({ success: true });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ success: false });
   }
-  res.redirect('/watchlist?tab=watchlist');
 });
 
 app.post('/watchlist/:id/unwatch', requireAuth, async (req, res) => {
@@ -537,6 +573,48 @@ app.post('/watchlist/:id/unwatch', requireAuth, async (req, res) => {
     console.error(err);
   }
   res.redirect('/watchlist?tab=watched');
+});
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+
+app.post('/reviews', requireAuth, async (req, res) => {
+  const { movie_id, title, rating, review_text } = req.body;
+  if (!movie_id || !rating) {
+    return res.status(400).json({ error: 'movie_id and rating are required' });
+  }
+  const r = parseInt(rating, 10);
+  if (isNaN(r) || r < 1 || r > 10) {
+    return res.status(400).json({ error: 'rating must be 1–10' });
+  }
+  try {
+    const row = await db.one(
+      `INSERT INTO reviews (user_id, movie_id, title, rating, review_text)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (user_id, movie_id) DO UPDATE
+         SET rating = EXCLUDED.rating,
+             review_text = EXCLUDED.review_text,
+             updated_at = NOW()
+       RETURNING id`,
+      [req.session.user.id, movie_id, title || null, r, review_text || null]
+    );
+    res.status(201).json({ success: true, id: row.id });
+  } catch (err) {
+    console.error('Review upsert error:', err);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+app.delete('/reviews/:id', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      'DELETE FROM reviews WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.session.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Review delete error:', err);
+    res.status(500).json({ success: false });
+  }
 });
 
 // ─── Movie detail proxy ───────────────────────────────────────────────────────
@@ -563,7 +641,49 @@ app.get('/api/movie/:tmdbId', async (req, res) => {
   }
 });
 
+app.get('/api/reviews', requireAuth, async (req, res) => {
+  const { movie_id } = req.query;
+  if (!movie_id) return res.json({ review: null });
+  try {
+    const row = await db.oneOrNone(
+      'SELECT * FROM reviews WHERE user_id = $1 AND movie_id = $2',
+      [req.session.user.id, movie_id]
+    );
+    res.json({ review: row || null });
+  } catch (err) {
+    console.error('Get review error:', err);
+    res.status(500).json({ review: null });
+  }
+});
 
+app.get('/api/movie/:tmdbId/reviews', requireAuth, async (req, res) => {
+  const { tmdbId } = req.params;
+  const userId = req.session.user.id;
+  try {
+    const rows = await db.any(
+      `SELECT r.id, r.rating, r.review_text, r.created_at, u.username
+       FROM reviews r
+       JOIN users u ON u.id = r.user_id
+       WHERE r.movie_id = $1
+         AND r.user_id != $2
+         AND (
+           EXISTS (
+             SELECT 1 FROM friends
+             WHERE requester_id = $2 AND addressee_id = r.user_id AND status = 'accepted'
+           ) OR EXISTS (
+             SELECT 1 FROM friends
+             WHERE requester_id = r.user_id AND addressee_id = $2 AND status = 'accepted'
+           )
+         )
+       ORDER BY r.created_at DESC`,
+      [tmdbId, userId]
+    );
+    res.json({ reviews: rows });
+  } catch (err) {
+    console.error('Friend reviews error:', err);
+    res.status(500).json({ reviews: [] });
+  }
+});
 
 // Friends page
 app.get('/friends', requireAuth, async (req, res) => {
@@ -759,8 +879,8 @@ app.get('/profile', requireAuth, async (req, res) => {
 
     if (!profile) {
       await db.none(
-        'INSERT INTO profile(user_id, name, age, gender, bio, favorite_genres, favorite_movies) VALUES($1, $2, $3, $4, $5, $6, $7)',
-        [req.session.user.id, '', null, '', '', '', '']
+        'INSERT INTO profile(user_id, name, age, country, bio, favorite_genres, favorite_movies) VALUES($1, $2, $3, $4, $5, $6, $7)',
+        [req.session.user.id, '', null, null, '', '', '']
       );
       profile = await db.one('SELECT * FROM profile WHERE user_id = $1', [req.session.user.id]);
     }
@@ -795,6 +915,17 @@ app.get('/profile', requireAuth, async (req, res) => {
       db.one('SELECT COUNT(*) FROM watchlist WHERE user_id = $1 AND watched = true', [req.session.user.id]),
     ]);
 
+    // Recent reviews
+    const recentReviews = await db.any(
+      `SELECT r.*, w.poster_url
+       FROM reviews r
+       LEFT JOIN watchlist w ON w.movie_id = r.movie_id AND w.user_id = r.user_id
+       WHERE r.user_id = $1
+       ORDER BY r.created_at DESC
+       LIMIT 5`,
+      [req.session.user.id]
+    );
+
     res.render('pages/profile', {
       user: req.session.user,
       profile,
@@ -805,6 +936,7 @@ app.get('/profile', requireAuth, async (req, res) => {
       topGenres,
       savedCount: parseInt(savedResult.count, 10),
       watchedCount: parseInt(watchedResult.count, 10),
+      recentReviews,
     });
   } catch (err) {
     console.error('Profile load error:', err);

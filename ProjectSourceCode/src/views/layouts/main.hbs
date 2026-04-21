@@ -12,6 +12,46 @@
     {{{body}}}
   </main>
   {{> footer}}
+
+  <!-- Review Modal (global — used from both home and watchlist pages) -->
+  <div id="reviewBackdrop">
+    <div id="reviewModal" role="dialog" aria-modal="true" aria-labelledby="reviewModalTitle">
+      <div class="review-modal-header">
+        <div class="review-modal-poster" id="reviewPoster">🎬</div>
+        <div>
+          <div class="review-modal-eyebrow">You just watched</div>
+          <div class="review-modal-title" id="reviewModalTitle"></div>
+          <div class="review-modal-meta" id="reviewModalMeta"></div>
+        </div>
+      </div>
+
+      <div class="review-field-label">Your Rating <span class="review-required">*</span></div>
+      <div class="star-row" id="reviewStarRow">
+        <span class="star" data-val="1">★</span>
+        <span class="star" data-val="2">★</span>
+        <span class="star" data-val="3">★</span>
+        <span class="star" data-val="4">★</span>
+        <span class="star" data-val="5">★</span>
+        <span class="star" data-val="6">★</span>
+        <span class="star" data-val="7">★</span>
+        <span class="star" data-val="8">★</span>
+        <span class="star" data-val="9">★</span>
+        <span class="star" data-val="10">★</span>
+        <span class="star-count" id="reviewStarCount"></span>
+      </div>
+
+      <div class="review-field-label">
+        Review <span style="color:var(--border);font-size:0.68rem;text-transform:none;letter-spacing:0;font-style:italic">(optional)</span>
+      </div>
+      <textarea class="review-textarea" id="reviewText" placeholder="What did you think?" rows="3"></textarea>
+
+      <div class="review-actions">
+        <button class="btn-review-submit" id="reviewSubmitBtn">Submit Review</button>
+        <button class="btn-review-skip" id="reviewSkipBtn">Skip</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/js/script.js"></script>
 </body>
 </html>
