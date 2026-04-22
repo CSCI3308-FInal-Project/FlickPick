@@ -76,3 +76,48 @@ CREATE TABLE IF NOT EXISTS reviews (
   updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(user_id, movie_id)
 );
+
+
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type       VARCHAR(50) NOT NULL,
+  payload    JSONB,
+  read       BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS group_sessions (
+  id             SERIAL PRIMARY KEY,
+  owner_id       INT NOT NULL REFERENCES users(id),
+  name           VARCHAR(100) NOT NULL,
+  code           VARCHAR(8) UNIQUE NOT NULL,
+  mode           VARCHAR(10) DEFAULT 'async',
+  status         VARCHAR(20) DEFAULT 'active',
+  seed_movie_id  VARCHAR(50),
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  ended_at       TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS session_members (
+  session_id  INT REFERENCES group_sessions(id) ON DELETE CASCADE,
+  user_id     INT REFERENCES users(id) ON DELETE CASCADE,
+  status      VARCHAR(20) DEFAULT 'invited',
+  joined_at   TIMESTAMP,
+  PRIMARY KEY (session_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS session_swipes (
+  id          SERIAL PRIMARY KEY,
+  session_id  INT REFERENCES group_sessions(id) ON DELETE CASCADE,
+  user_id     INT REFERENCES users(id) ON DELETE CASCADE,
+  movie_id    VARCHAR(50) NOT NULL,
+  title       VARCHAR(255),
+  poster_url  VARCHAR(500),
+  liked       BOOLEAN NOT NULL,
+  swiped_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(session_id, user_id, movie_id)
+);
+
+ALTER TABLE friends ALTER COLUMN status SET DEFAULT 'pending';

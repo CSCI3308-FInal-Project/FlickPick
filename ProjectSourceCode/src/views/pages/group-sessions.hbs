@@ -1,0 +1,287 @@
+<div class="gs-container">
+
+  <div class="gs-page-header">
+    <h1>Group Sessions</h1>
+    <p class="gs-page-subtitle">Find movies everyone wants to watch together.</p>
+  </div>
+
+  {{#if message}}
+    <div class="alert">{{message}}</div>
+  {{/if}}
+  {{#if error}}
+    <div class="alert" style="color:#ff6b6b">{{error}}</div>
+  {{/if}}
+
+  <section class="gs-section">
+    <div class="gs-section-header">
+      <h2 class="gs-section-title">Top Picks Among Friends</h2>
+      <p class="gs-section-sub">Movies your friends have saved — start a session around one.</p>
+    </div>
+    {{#if topPicks.length}}
+      <div class="gs-scroll-row">
+        {{#each topPicks}}
+          <div class="gs-pick-card">
+            <div class="gs-pick-poster">
+              {{#if this.poster_url}}
+                <img src="{{this.poster_url}}" alt="{{this.title}}" onerror="this.style.display='none'" />
+              {{/if}}
+              <div class="gs-pick-fallback">✦</div>
+            </div>
+            <div class="gs-pick-info">
+              <p class="gs-pick-title">{{this.title}}</p>
+              <p class="gs-pick-friends">{{this.watchlist_count}} friend{{#if (gt this.watchlist_count 1)}}s{{/if}} saved this</p>
+            </div>
+            <button class="btn-start-session" onclick="prefillCreate('{{this.movie_id}}', '{{this.title}}')">
+              Start Session
+            </button>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <div class="empty-state">
+        <span class="empty-icon">🎬</span>
+        <strong>Nothing here yet</strong>
+        <span>Add friends to see what they're watching</span>
+      </div>
+    {{/if}}
+  </section>
+
+  <section class="gs-section">
+    <div class="gs-section-header">
+      <h2 class="gs-section-title">My Sessions</h2>
+    </div>
+    {{#if sessions.length}}
+      <div class="gs-sessions-grid">
+        {{#each sessions}}
+          <div class="gs-session-card {{#if (eq this.status 'ended')}}gs-session-ended{{/if}}">
+            <div class="gs-session-top">
+              <div class="gs-session-name-row">
+                <span class="gs-session-name">{{this.name}}</span>
+                <span class="gs-mode-badge gs-mode-{{this.mode}}">{{this.mode}}</span>
+              </div>
+              <p class="gs-session-code">Code: <code>{{this.code}}</code></p>
+            </div>
+            <div class="gs-session-meta">
+              <span class="gs-meta-chip">👥 {{this.member_count}} member{{#if (gt this.member_count 1)}}s{{/if}}</span>
+              <span class="gs-meta-chip gs-match-chip">❤️ {{this.match_count}} match{{#if (gt this.match_count 1)}}es{{/if}}</span>
+              {{#if (eq this.status 'ended')}}<span class="gs-meta-chip gs-ended-chip">Ended</span>{{/if}}
+            </div>
+            <div class="gs-session-actions">
+              {{#if (eq this.status 'active')}}
+                <a href="/group-sessions/{{this.id}}" class="btn-primary gs-btn-swipe">▶ Swipe</a>
+              {{else}}
+                <a href="/group-sessions/{{this.id}}" class="btn-remove gs-btn-results">View Results</a>
+              {{/if}}
+            </div>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <div class="empty-state">
+        <span class="empty-icon">🍿</span>
+        <strong>No sessions yet</strong>
+        <span>Create one below to get started</span>
+      </div>
+    {{/if}}
+  </section>
+
+  <section class="gs-section" id="create-join-section">
+    <div class="gs-cj-panels">
+
+      <div class="gs-panel">
+        <h2 class="gs-panel-title">Create a Session</h2>
+        <form id="createSessionForm" class="gs-form">
+          <div class="form-group">
+            <label for="sessionName">Session Name</label>
+            <input type="text" id="sessionName" name="name" placeholder="e.g. Friday Night Movies" required class="gs-input" />
+          </div>
+          <div class="form-group">
+            <label>Mode</label>
+            <div class="gs-mode-toggle">
+              <label class="gs-mode-option">
+                <input type="radio" name="mode" value="async" checked />
+                <span class="gs-mode-label">
+                  <span class="gs-mode-icon">⏳</span>
+                  Async
+                  <small>Swipe on your own time</small>
+                </span>
+              </label>
+              <label class="gs-mode-option">
+                <input type="radio" name="mode" value="live" />
+                <span class="gs-mode-label">
+                  <span class="gs-mode-icon">⚡</span>
+                  Live
+                  <small>Swipe together in real time</small>
+                </span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Invite Friends</label>
+            {{#if friends.length}}
+              <div class="gs-friend-checklist">
+                {{#each friends}}
+                  <label class="gs-friend-check-item">
+                    <input type="checkbox" name="inviteUserIds" value="{{this.id}}" class="row-check" />
+                    <span class="gs-friend-check-name">{{this.username}}</span>
+                  </label>
+                {{/each}}
+              </div>
+            {{else}}
+              <p class="gs-no-friends-note">Add friends first to invite them.</p>
+            {{/if}}
+          </div>
+          <div class="form-group">
+            <label for="seedMovieTitle">Seed Movie <span class="gs-optional">(optional)</span></label>
+            <input type="text" id="seedMovieTitle" name="seedMovieTitle" placeholder="Movie to start with..." class="gs-input" />
+            <input type="hidden" id="seedMovieId" name="seedMovieId" />
+          </div>
+          <button type="submit" class="btn-primary">Create Session</button>
+          <p class="gs-form-note gs-form-error" id="createMsg"></p>
+        </form>
+      </div>
+
+      <div class="gs-panel-divider"><span>or</span></div>
+
+      <div class="gs-panel">
+        <h2 class="gs-panel-title">Join a Session</h2>
+        <p class="gs-panel-sub">Got a code from a friend? Enter it below.</p>
+        <form id="joinSessionForm" class="gs-form">
+          <div class="form-group">
+            <label for="joinCode">Session Code</label>
+            <input type="text" id="joinCode" name="code" placeholder="e.g. AB12CD34" maxlength="8" class="gs-input gs-code-input" autocomplete="off" required />
+          </div>
+          <button type="submit" class="btn-primary">Join Session</button>
+          <p class="gs-form-note gs-form-error" id="joinMsg"></p>
+        </form>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<style>
+.gs-container { max-width:900px;margin:0 auto;padding:2rem 1rem 4rem;display:flex;flex-direction:column;gap:2.5rem;width:100%; }
+.gs-page-header h1 { font-size:2rem;font-weight:700; }
+.gs-page-subtitle { color:var(--muted);margin-top:0.3rem;font-size:0.95rem; }
+.gs-section { display:flex;flex-direction:column;gap:1.2rem; }
+.gs-section-header { display:flex;flex-direction:column;gap:0.2rem; }
+.gs-section-title { font-size:1.3rem;font-weight:700; }
+.gs-section-sub { color:var(--muted);font-size:0.88rem; }
+.gs-scroll-row { display:flex;gap:1rem;overflow-x:auto;padding-bottom:0.5rem;scrollbar-width:thin;scrollbar-color:var(--border) transparent; }
+.gs-pick-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);flex-shrink:0;width:160px;overflow:hidden;display:flex;flex-direction:column;transition:border-color 0.2s; }
+.gs-pick-card:hover { border-color:var(--accent); }
+.gs-pick-poster { position:relative;height:200px;background:#111;display:flex;align-items:center;justify-content:center;overflow:hidden; }
+.gs-pick-poster img { width:100%;height:100%;object-fit:cover;position:absolute;inset:0; }
+.gs-pick-fallback { font-size:2rem;color:var(--muted);z-index:1; }
+.gs-pick-info { padding:0.75rem 0.75rem 0.4rem;flex:1; }
+.gs-pick-title { font-size:0.88rem;font-weight:600;line-height:1.3;margin-bottom:0.3rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
+.gs-pick-friends { font-size:0.75rem;color:var(--muted); }
+.btn-start-session { margin:0.5rem 0.75rem 0.75rem;background:rgba(229,9,20,0.12);color:var(--accent);border:1px solid rgba(229,9,20,0.3);border-radius:7px;padding:0.4rem 0.6rem;font-size:0.8rem;font-weight:600;cursor:pointer;transition:background 0.15s;text-align:center; }
+.btn-start-session:hover { background:rgba(229,9,20,0.22); }
+.gs-sessions-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem; }
+.gs-session-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem;display:flex;flex-direction:column;gap:0.85rem;transition:border-color 0.2s; }
+.gs-session-card:hover { border-color:#444; }
+.gs-session-ended { opacity:0.7; }
+.gs-session-name-row { display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap; }
+.gs-session-name { font-weight:700;font-size:1rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.gs-mode-badge { font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0; }
+.gs-mode-async { background:rgba(66,165,245,0.15);color:#64b5f6;border:1px solid rgba(66,165,245,0.3); }
+.gs-mode-live { background:rgba(229,9,20,0.15);color:var(--accent);border:1px solid rgba(229,9,20,0.3); }
+.gs-session-code { font-size:0.8rem;color:var(--muted);margin-top:-0.5rem; }
+.gs-session-code code { font-family:monospace;background:#242424;padding:1px 6px;border-radius:4px;color:var(--text);letter-spacing:0.08em; }
+.gs-session-meta { display:flex;flex-wrap:wrap;gap:0.4rem; }
+.gs-meta-chip { font-size:0.78rem;background:#242424;border:1px solid var(--border);border-radius:20px;padding:2px 10px;color:var(--muted); }
+.gs-match-chip { color:var(--accent);border-color:rgba(229,9,20,0.3);background:rgba(229,9,20,0.08); }
+.gs-ended-chip { color:#888; }
+.gs-session-actions { margin-top:auto; }
+.gs-btn-swipe,.gs-btn-results { display:block;text-align:center;padding:0.6rem 1rem;border-radius:8px;font-size:0.9rem; }
+.gs-cj-panels { display:flex;flex-direction:column;gap:1.5rem; }
+@media (min-width:640px) {
+  .gs-cj-panels { flex-direction:row;align-items:flex-start;gap:0; }
+  .gs-panel { flex:1; }
+  .gs-panel-divider { display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;min-height:200px; }
+}
+.gs-panel { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;display:flex;flex-direction:column;gap:1.2rem; }
+.gs-panel-title { font-size:1.1rem;font-weight:700; }
+.gs-panel-sub { color:var(--muted);font-size:0.88rem;margin-top:-0.8rem; }
+.gs-panel-divider { display:flex;align-items:center;justify-content:center;padding:0.5rem 1.2rem;color:var(--muted);font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em; }
+.gs-form { display:flex;flex-direction:column;gap:1.1rem; }
+.gs-input { background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.65rem 0.9rem;font-size:0.95rem;width:100%;transition:border-color 0.2s; }
+.gs-input:focus { outline:none;border-color:var(--accent); }
+.gs-code-input { text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;font-size:1.1rem; }
+.gs-optional { color:var(--muted);font-size:0.8rem;font-weight:400; }
+.gs-mode-toggle { display:flex;gap:0.75rem; }
+.gs-mode-option { flex:1;cursor:pointer; }
+.gs-mode-option input[type="radio"] { display:none; }
+.gs-mode-label { display:flex;flex-direction:column;align-items:center;gap:3px;padding:0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;text-align:center;font-size:0.88rem;font-weight:600;transition:border-color 0.15s,background 0.15s;cursor:pointer; }
+.gs-mode-label small { font-size:0.72rem;font-weight:400;color:var(--muted); }
+.gs-mode-label .gs-mode-icon { font-size:1.2rem; }
+.gs-mode-option input[type="radio"]:checked + .gs-mode-label { border-color:var(--accent);background:rgba(229,9,20,0.08);color:var(--accent); }
+.gs-mode-option input[type="radio"]:checked + .gs-mode-label small { color:rgba(229,9,20,0.7); }
+.gs-friend-checklist { display:flex;flex-direction:column;gap:0.5rem;max-height:160px;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.75rem; }
+.gs-friend-check-item { display:flex;align-items:center;gap:0.6rem;font-size:0.9rem;cursor:pointer;padding:0.25rem 0; }
+.gs-friend-check-item:hover { color:var(--accent); }
+.gs-no-friends-note { color:var(--muted);font-size:0.85rem; }
+.gs-form-note { font-size:0.85rem;color:var(--muted);min-height:1.2em; }
+.gs-form-error { color:#ff6b6b; }
+</style>
+
+<script>
+function prefillCreate(movieId, movieTitle) {
+  document.getElementById('seedMovieId').value = movieId;
+  document.getElementById('seedMovieTitle').value = movieTitle;
+  document.getElementById('create-join-section').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const seedId = params.get('seed');
+  const seedTitle = params.get('seedTitle');
+  const joinCode = params.get('join');
+  if (seedId) {
+    document.getElementById('seedMovieId').value = seedId;
+    if (seedTitle) document.getElementById('seedMovieTitle').value = decodeURIComponent(seedTitle);
+    document.getElementById('create-join-section').scrollIntoView({ behavior:'smooth' });
+  }
+  if (joinCode) {
+    document.getElementById('joinCode').value = joinCode.toUpperCase();
+    document.getElementById('create-join-section').scrollIntoView({ behavior:'smooth' });
+  }
+})();
+document.getElementById('createSessionForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('createMsg');
+  msg.textContent = '';
+  const form = e.target;
+  const name = form.name.value.trim();
+  const mode = form.mode.value;
+  const seedMovieId = form.seedMovieId.value || null;
+  const inviteUserIds = [...form.querySelectorAll('input[name="inviteUserIds"]:checked')].map(cb => parseInt(cb.value));
+  try {
+    const res = await fetch('/group-sessions/create', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, mode, inviteUserIds, seedMovieId }),
+    });
+    const data = await res.json();
+    if (!res.ok) { msg.textContent = data.message || 'Failed to create session.'; return; }
+    window.location.href = '/group-sessions/' + data.sessionId;
+  } catch (err) { msg.textContent = 'Something went wrong. Please try again.'; }
+});
+document.getElementById('joinSessionForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('joinMsg');
+  const code = document.getElementById('joinCode').value.trim().toUpperCase();
+  msg.textContent = '';
+  if (code.length !== 8) { msg.textContent = 'Session codes are 8 characters.'; return; }
+  try {
+    const res = await fetch('/group-sessions/join', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ code }),
+    });
+    const data = await res.json();
+    if (!res.ok) { msg.textContent = data.message || 'Could not join session.'; return; }
+    window.location.href = '/group-sessions/' + data.sessionId;
+  } catch (err) { msg.textContent = 'Something went wrong. Please try again.'; }
+});
+document.getElementById('joinCode').addEventListener('input', function ()
