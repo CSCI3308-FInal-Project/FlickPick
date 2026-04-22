@@ -388,21 +388,22 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Dropdown ───────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  const dropdown = document.querySelector('.nav-dropdown');
-  if (!dropdown) return;
+  const dropdowns = document.querySelectorAll('.nav-dropdown');
 
-  const toggle = dropdown.querySelector('.profile-icon-btn') || dropdown.querySelector('.nav-link');
-  if (!toggle) return;
+  dropdowns.forEach(dropdown => {
+    const toggle = dropdown.querySelector('.profile-icon-btn') || dropdown.querySelector('.nav-link') || dropdown.querySelector('button');
+    if (!toggle) return;
 
-  toggle.addEventListener('click', e => {
-    e.preventDefault();
-    dropdown.classList.toggle('dropdown-open');
-  });
+    toggle.addEventListener('click', e => {
+      e.preventDefault();
+      dropdown.classList.toggle('dropdown-open');
+    });
 
-  document.addEventListener('click', e => {
-    if (!dropdown.contains(e.target)) {
-      dropdown.classList.remove('dropdown-open');
-    }
+    document.addEventListener('click', e => {
+      if (!dropdown.contains(e.target)) {
+        dropdown.classList.remove('dropdown-open');
+      }
+    });
   });
 });
 

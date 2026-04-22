@@ -1050,6 +1050,57 @@ app.post('/group-sessions/:id/end', requireAuth, async (req, res) => {
   }
 });
 
+// ── Notifications (Phase 3B) ──────────────────────────────────────────────────
+
+app.get('/api/notifications', requireAuth, async (req, res) => {
+  try {
+    const notifications = await db.any(
+      `SELECT * FROM notifications 
+       WHERE user_id = $1 
+       ORDER BY read ASC, created_at DESC 
+       LIMIT 20`,
+      [req.session.user.id]
+    );
+    const unreadCountRow = await db.one(
+      `SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND read = false`,
+      [req.session.user.id]
+    );
+    res.json({
+      unreadCount: parseInt(unreadCountRow.count),
+      notifications: notifications
+    });
+  } catch (err) {
+    console.error('Fetch notifications error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/notifications/:id/read', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      `UPDATE notifications SET read = true WHERE id = $1 AND user_id = $2`,
+      [req.params.id, req.session.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Mark read error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/notifications/read-all', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      `UPDATE notifications SET read = true WHERE user_id = $1`,
+      [req.session.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Mark all read error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.get('/api/group-sessions/:id/state', requireAuth, async (req, res) => {
   const sessionId = req.params.id;
   try {

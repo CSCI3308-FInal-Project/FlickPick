@@ -284,4 +284,7 @@ document.getElementById('joinSessionForm').addEventListener('submit', async (e) 
     window.location.href = '/group-sessions/' + data.sessionId;
   } catch (err) { msg.textContent = 'Something went wrong. Please try again.'; }
 });
-document.getElementById('joinCode').addEventListener('input', function ()
+document.getElementById('joinCode').addEventListener('input', function () {
+  this.value = this.value.toUpperCase();
+});
+</script>
