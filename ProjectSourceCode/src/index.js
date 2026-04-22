@@ -853,6 +853,226 @@ app.post('/profile/photo', requireAuth, upload.single('photo'), async (req, res)
     res.status(500).json({ error: 'Failed to save photo' });
   }
 });
+
+// ─── Group Sessions ───────────────────────────────────────────────────────────
+
+app.get('/group-sessions', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const sessions = await db.any(
+      `SELECT gs.*,
+        (SELECT COUNT(*) FROM session_members sm WHERE sm.session_id = gs.id AND sm.status = 'joined') AS member_count,
+        (SELECT COUNT(*) FROM (
+          SELECT movie_id FROM session_swipes WHERE session_id = gs.id AND liked = true
+          GROUP BY movie_id
+          HAVING COUNT(DISTINCT user_id) = (SELECT COUNT(*) FROM session_members WHERE session_id = gs.id AND status = 'joined')
+        ) m) AS match_count
+       FROM group_sessions gs
+       JOIN session_members sm ON sm.session_id = gs.id
+       WHERE sm.user_id = $1
+       ORDER BY gs.created_at DESC`,
+      [userId]
+    );
+    const friends = await db.any(
+      `SELECT u.id, u.username FROM friends f
+       JOIN users u ON u.id = CASE WHEN f.requester_id = $1 THEN f.addressee_id ELSE f.requester_id END
+       WHERE (f.requester_id = $1 OR f.addressee_id = $1) AND f.status = 'accepted'
+       ORDER BY u.username`,
+      [userId]
+    );
+    const topPicks = await db.any(
+      `SELECT w.movie_id, w.title, w.poster_url, COUNT(DISTINCT w.user_id) AS watchlist_count
+       FROM friends f
+       JOIN users u ON u.id = CASE WHEN f.requester_id = $1 THEN f.addressee_id ELSE f.requester_id END
+       JOIN watchlist w ON w.user_id = u.id
+       WHERE (f.requester_id = $1 OR f.addressee_id = $1) AND f.status = 'accepted'
+       GROUP BY w.movie_id, w.title, w.poster_url
+       ORDER BY watchlist_count DESC LIMIT 20`,
+      [userId]
+    );
+    res.render('pages/group-sessions', {
+      user: req.session.user, activePage: 'group-sessions',
+      sessions: sessions.map(s => ({ ...s, member_count: parseInt(s.member_count)||0, match_count: parseInt(s.match_count)||0 })),
+      friends, topPicks,
+    });
+  } catch (err) {
+    console.error('Group sessions load error:', err);
+    res.render('pages/group-sessions', { user: req.session.user, activePage: 'group-sessions', sessions: [], friends: [], topPicks: [], error: 'Could not load sessions.' });
+  }
+});
+
+app.post('/group-sessions/create', requireAuth, async (req, res) => {
+  const { name, mode, inviteUserIds, seedMovieId } = req.body;
+  const userId = req.session.user.id;
+  if (!name) return res.status(400).json({ message: 'Session name is required.' });
+  try {
+    let code, exists = true;
+    while (exists) {
+      code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      const row = await db.oneOrNone('SELECT id FROM group_sessions WHERE code = $1', [code]);
+      exists = !!row;
+    }
+    const session = await db.one(
+      `INSERT INTO group_sessions (owner_id, name, code, mode, seed_movie_id) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+      [userId, name, code, mode || 'async', seedMovieId || null]
+    );
+    await db.none(
+      `INSERT INTO session_members (session_id, user_id, status, joined_at) VALUES ($1,$2,'joined',NOW())`,
+      [session.id, userId]
+    );
+    const invites = Array.isArray(inviteUserIds) ? inviteUserIds : (inviteUserIds ? [inviteUserIds] : []);
+    for (const invitedId of invites) {
+      await db.none(
+        `INSERT INTO session_members (session_id, user_id, status) VALUES ($1,$2,'invited') ON CONFLICT DO NOTHING`,
+        [session.id, invitedId]
+      );
+    }
+    res.json({ sessionId: session.id, code });
+  } catch (err) {
+    console.error('Create session error:', err);
+    res.status(500).json({ message: 'Could not create session.' });
+  }
+});
+
+app.post('/group-sessions/join', requireAuth, async (req, res) => {
+  const { code } = req.body;
+  const userId = req.session.user.id;
+  try {
+    const session = await db.oneOrNone('SELECT * FROM group_sessions WHERE code = $1', [code]);
+    if (!session) return res.status(404).json({ message: 'Session not found.' });
+    if (session.status === 'ended') return res.status(400).json({ message: 'This session has already ended.' });
+    await db.none(
+      `INSERT INTO session_members (session_id, user_id, status, joined_at) VALUES ($1,$2,'joined',NOW())
+       ON CONFLICT (session_id, user_id) DO UPDATE SET status='joined', joined_at=NOW()`,
+      [session.id, userId]
+    );
+    res.json({ sessionId: session.id });
+  } catch (err) {
+    console.error('Join session error:', err);
+    res.status(500).json({ message: 'Could not join session.' });
+  }
+});
+
+app.get('/group-sessions/:id', requireAuth, async (req, res) => {
+  const sessionId = req.params.id;
+  const userId = req.session.user.id;
+  try {
+    const session = await db.oneOrNone('SELECT * FROM group_sessions WHERE id = $1', [sessionId]);
+    if (!session) return res.status(404).send('Session not found');
+    const members = await db.any(
+      `SELECT sm.user_id, sm.status, u.username,
+         (SELECT COUNT(*) FROM session_swipes ss WHERE ss.session_id=$1 AND ss.user_id=sm.user_id) AS swipe_count
+       FROM session_members sm JOIN users u ON u.id=sm.user_id WHERE sm.session_id=$1`,
+      [sessionId]
+    );
+    const matches = await db.any(
+      `SELECT movie_id, title, poster_url FROM session_swipes
+       WHERE session_id=$1 AND liked=true
+       GROUP BY movie_id, title, poster_url
+       HAVING COUNT(DISTINCT user_id)=(SELECT COUNT(*) FROM session_members WHERE session_id=$1 AND status='joined')`,
+      [sessionId]
+    );
+    const mySwipeRow = await db.oneOrNone(
+      'SELECT COUNT(*) FROM session_swipes WHERE session_id=$1 AND user_id=$2',
+      [sessionId, userId]
+    );
+    const mySwipeCount = parseInt(mySwipeRow?.count || 0);
+    const swipedIds = await db.any('SELECT movie_id FROM session_swipes WHERE session_id=$1 AND user_id=$2', [sessionId, userId]);
+    const swipedSet = new Set(swipedIds.map(r => String(r.movie_id)));
+    let pool = [];
+    try {
+      if (session.seed_movie_id && !swipedSet.has(String(session.seed_movie_id))) {
+        const seedRes = await fetch(`https://api.themoviedb.org/3/movie/${session.seed_movie_id}?api_key=${process.env.TMDB_API_KEY}`);
+        const seedData = await seedRes.json();
+        if (seedData.id) pool.push({ id:String(seedData.id), title:seedData.title, poster:seedData.poster_path?`https://image.tmdb.org/t/p/w500${seedData.poster_path}`:null, year:seedData.release_date?.slice(0,4)||'N/A', rating:seedData.vote_average?.toFixed(1)||'N/A', genres:(seedData.genre_ids||[]).slice(0,2).map(id=>GENRE_MAP[id]).filter(Boolean).join(', '), synopsis:seedData.overview||'' });
+      }
+      const page = Math.floor(Math.random()*5)+1;
+      const tmdbRes = await fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page}`);
+      const tmdbData = await tmdbRes.json();
+      const extra = (tmdbData.results||[]).filter(m=>!swipedSet.has(String(m.id))).map(m=>({ id:String(m.id), title:m.title, poster:m.poster_path?`https://image.tmdb.org/t/p/w500${m.poster_path}`:null, year:m.release_date?.slice(0,4)||'N/A', rating:m.vote_average?.toFixed(1)||'N/A', genres:(m.genre_ids||[]).slice(0,2).map(id=>GENRE_MAP[id]).filter(Boolean).join(', '), synopsis:m.overview||'' }));
+      pool = [...pool, ...extra].slice(0, 20);
+    } catch(_) {}
+    const isOwner = session.owner_id === userId;
+    const totalMovies = pool.length;
+    const progressPct = totalMovies > 0 ? Math.round((mySwipeCount/totalMovies)*100) : 0;
+    res.render('pages/group-session-detail', {
+      user:req.session.user, session, activePage:'group-sessions',
+      members: members.map(m=>({...m, swipeCount:parseInt(m.swipe_count||0)})),
+      matches, mySwipeCount, totalMovies, progressPct,
+      matchCount: matches.length, isOwner,
+      moviesJson: JSON.stringify(pool),
+    });
+  } catch (err) {
+    console.error('Session detail error:', err);
+    res.status(500).send('Could not load session');
+  }
+});
+
+app.post('/group-sessions/:id/swipe', requireAuth, async (req, res) => {
+  const { movieId, title, posterUrl, liked } = req.body;
+  const sessionId = req.params.id;
+  const userId = req.session.user.id;
+  try {
+    await db.none(
+      `INSERT INTO session_swipes (session_id, user_id, movie_id, title, poster_url, liked)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (session_id, user_id, movie_id) DO UPDATE SET liked=EXCLUDED.liked`,
+      [sessionId, userId, movieId, title, posterUrl||null, liked]
+    );
+    const match = await db.oneOrNone(
+      `SELECT movie_id, title, poster_url FROM session_swipes
+       WHERE session_id=$1 AND liked=true
+         AND movie_id IN (
+           SELECT movie_id FROM session_swipes WHERE session_id=$1 AND liked=true
+           GROUP BY movie_id
+           HAVING COUNT(DISTINCT user_id)=(SELECT COUNT(*) FROM session_members WHERE session_id=$1 AND status='joined')
+         )
+       LIMIT 1`,
+      [sessionId]
+    );
+    res.json({ matched:!!match, matchedMovie:match||null });
+  } catch (err) {
+    console.error('Session swipe error:', err);
+    res.status(500).json({ matched:false });
+  }
+});
+
+app.post('/group-sessions/:id/end', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      `UPDATE group_sessions SET status='ended', ended_at=NOW() WHERE id=$1 AND owner_id=$2`,
+      [req.params.id, req.session.user.id]
+    );
+    res.json({ success:true });
+  } catch (err) {
+    console.error('End session error:', err);
+    res.status(500).json({ success:false });
+  }
+});
+
+app.get('/api/group-sessions/:id/state', requireAuth, async (req, res) => {
+  const sessionId = req.params.id;
+  try {
+    const session = await db.oneOrNone('SELECT * FROM group_sessions WHERE id=$1', [sessionId]);
+    const members = await db.any(
+      `SELECT sm.user_id, sm.status, u.username,
+         (SELECT COUNT(*) FROM session_swipes ss WHERE ss.session_id=$1 AND ss.user_id=sm.user_id) AS swipe_count
+       FROM session_members sm JOIN users u ON u.id=sm.user_id WHERE sm.session_id=$1`,
+      [sessionId]
+    );
+    const matches = await db.any(
+      `SELECT movie_id, title, poster_url FROM session_swipes
+       WHERE session_id=$1 AND liked=true
+       GROUP BY movie_id, title, poster_url
+       HAVING COUNT(DISTINCT user_id)=(SELECT COUNT(*) FROM session_members WHERE session_id=$1 AND status='joined')`,
+      [sessionId]
+    );
+    res.json({ session, members:members.map(m=>({...m,swipeCount:parseInt(m.swipe_count||0)})), matches });
+  } catch (err) {
+    console.error('State poll error:', err);
+    res.status(500).json({ session:null, members:[], matches:[] });
+  }
+});
 async function initDb() {
   const createSql = fs.readFileSync(path.join(__dirname, 'init_data/create.sql'), 'utf8');
   const insertSql = fs.readFileSync(path.join(__dirname, 'init_data/insert.sql'), 'utf8');

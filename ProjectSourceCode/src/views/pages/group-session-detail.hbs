@@ -1,0 +1,302 @@
+<div class="gs-detail-container">
+
+  <div class="gs-detail-header">
+    <div class="gs-detail-title-row">
+      <a href="/group-sessions" class="gs-back-link">← Back</a>
+      <h1 class="gs-detail-title">{{session.name}}</h1>
+      <span class="gs-mode-badge gs-mode-{{session.mode}}">{{session.mode}}</span>
+    </div>
+    <div class="gs-detail-meta-row">
+      <span class="gs-meta-chip">Code: <code>{{session.code}}</code></span>
+      <span class="gs-meta-chip">❤️ <span id="matchCountNum">{{matchCount}}</span> matches</span>
+      <span class="gs-meta-chip">🎬 <span id="progressNum">{{mySwipeCount}}</span> / {{totalMovies}} swiped</span>
+      {{#if isOwner}}{{#if (eq session.status 'active')}}
+        <button class="btn-end-session" id="endSessionBtn">End Session</button>
+      {{/if}}{{/if}}
+      {{#unless isOwner}}
+        <button class="btn-leave-session" id="leaveSessionBtn">Leave</button>
+      {{/unless}}
+    </div>
+    <div class="gs-progress-bar-wrap">
+      <div class="gs-progress-bar" id="progressBar" style="width:{{progressPct}}%"></div>
+    </div>
+  </div>
+
+  {{#if (eq session.status 'ended')}}
+  <div class="gs-results-view">
+    <h2 class="gs-section-title">🎉 Session Results</h2>
+    {{#if matches.length}}
+      <div class="gs-matches-list">
+        {{#each matches}}
+          <div class="gs-match-card">
+            <div class="gs-match-poster">
+              {{#if this.poster_url}}<img src="{{this.poster_url}}" alt="{{this.title}}" />{{else}}<span>✦</span>{{/if}}
+            </div>
+            <div class="gs-match-info">
+              <p class="gs-match-title">{{this.title}}</p>
+              <p class="gs-match-sub">Everyone liked this!</p>
+            </div>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <div class="empty-state">
+        <span class="empty-icon">😔</span>
+        <strong>No matches this time</strong>
+        <span>Try again with different movies!</span>
+      </div>
+    {{/if}}
+  </div>
+
+  {{else}}
+  <div class="gs-swipe-layout">
+    <div class="gs-swipe-main">
+      <div class="card-stack">
+        <div class="movie-card" id="movieCard">
+          <div class="card-poster">
+            <img id="cardPoster" src="" alt="Movie poster" onerror="this.style.display='none'" />
+            <div class="poster-fallback" id="cardFallback">
+              <span class="poster-fallback-icon">✦</span>
+              <span class="poster-fallback-title" id="cardFallbackTitle"></span>
+            </div>
+            <div class="poster-gradient"></div>
+            <div class="poster-badges" id="cardBadges"></div>
+            <div class="poster-overlay">
+              <h2 class="card-title" id="cardTitle"></h2>
+              <p class="card-meta" id="cardMeta"></p>
+            </div>
+          </div>
+          <div class="card-info"><p class="card-synopsis" id="cardSynopsis"></p></div>
+          <div class="card-actions">
+            <button class="btn-pass" id="passBtn">✕ Pass</button>
+            <button class="btn-save" id="saveBtn">❤ Like</button>
+          </div>
+        </div>
+        <div class="no-more-msg" id="noMoreMsg" style="display:none">
+          <span class="empty-icon">✦</span>
+          <strong>You've swiped all movies!</strong>
+          <span>Waiting for others to finish...</span>
+        </div>
+        {{#if (eq session.mode 'live')}}
+        <div class="gs-waiting-overlay" id="waitingOverlay" style="display:none">
+          <div class="gs-waiting-inner">
+            <div class="gs-waiting-spinner"></div>
+            <p>Waiting for others...</p>
+          </div>
+        </div>
+        {{/if}}
+      </div>
+    </div>
+
+    <div class="gs-swipe-sidebar">
+      <div class="gs-sidebar-card">
+        <h3 class="gs-sidebar-title">❤️ Matches</h3>
+        <div id="matchesList">
+          {{#if matches.length}}
+            {{#each matches}}
+              <div class="gs-match-card">
+                <div class="gs-match-poster">
+                  {{#if this.poster_url}}<img src="{{this.poster_url}}" alt="{{this.title}}" />{{else}}<span>✦</span>{{/if}}
+                </div>
+                <div class="gs-match-info"><p class="gs-match-title">{{this.title}}</p></div>
+              </div>
+            {{/each}}
+          {{else}}
+            <p class="gs-sidebar-empty">No matches yet — keep swiping!</p>
+          {{/if}}
+        </div>
+      </div>
+      <div class="gs-sidebar-card">
+        <h3 class="gs-sidebar-title">👥 Members</h3>
+        <div id="membersList">
+          {{#each members}}
+            <div class="gs-member-row">
+              <div class="gs-member-initial">{{this.username.[0]}}</div>
+              <span class="gs-member-name">{{this.username}}</span>
+              <span class="gs-member-status gs-member-{{this.status}}">{{this.status}}</span>
+              <span class="gs-member-count">{{this.swipeCount}} swiped</span>
+            </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+  </div>
+  {{/if}}
+
+</div>
+
+<style>
+.gs-detail-container { max-width:1000px;margin:0 auto;padding:1.5rem 1rem 4rem;display:flex;flex-direction:column;gap:1.5rem;width:100%; }
+.gs-detail-header { display:flex;flex-direction:column;gap:0.75rem; }
+.gs-detail-title-row { display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap; }
+.gs-back-link { color:var(--muted);font-size:0.9rem; }
+.gs-back-link:hover { color:var(--accent); }
+.gs-detail-title { font-size:1.6rem;font-weight:700;flex:1; }
+.gs-detail-meta-row { display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap; }
+.gs-meta-chip { font-size:0.78rem;background:#242424;border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--muted); }
+.gs-meta-chip code { font-family:monospace;color:var(--text);letter-spacing:0.08em; }
+.btn-end-session { background:rgba(229,9,20,0.12);color:var(--accent);border:1px solid rgba(229,9,20,0.3);border-radius:7px;padding:0.35rem 0.9rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:background 0.15s; }
+.btn-end-session:hover { background:rgba(229,9,20,0.25); }
+.btn-leave-session { background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:7px;padding:0.35rem 0.9rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:background 0.15s; }
+.btn-leave-session:hover { background:#2a2a2a;color:var(--text); }
+.gs-progress-bar-wrap { height:4px;background:var(--border);border-radius:2px;overflow:hidden; }
+.gs-progress-bar { height:100%;background:var(--accent);border-radius:2px;transition:width 0.4s ease; }
+.gs-swipe-layout { display:flex;flex-direction:column;gap:1.5rem;align-items:flex-start; }
+@media (min-width:768px) {
+  .gs-swipe-layout { flex-direction:row;align-items:flex-start; }
+  .gs-swipe-main { flex:1;display:flex;justify-content:center; }
+  .gs-swipe-sidebar { width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:1rem;position:sticky;top:80px; }
+}
+.gs-swipe-main { width:100%; }
+.gs-sidebar-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;flex-direction:column;gap:0.75rem; }
+.gs-sidebar-title { font-size:0.95rem;font-weight:700; }
+.gs-sidebar-empty { color:var(--muted);font-size:0.85rem; }
+.gs-matches-list { display:flex;flex-direction:column;gap:0.75rem; }
+.gs-match-card { display:flex;align-items:center;gap:0.75rem; }
+.gs-match-poster { width:44px;height:62px;background:#111;border-radius:6px;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:1.2rem; }
+.gs-match-poster img { width:100%;height:100%;object-fit:cover; }
+.gs-match-info { flex:1; }
+.gs-match-title { font-size:0.88rem;font-weight:600;line-height:1.3; }
+.gs-match-sub { font-size:0.75rem;color:var(--muted);margin-top:2px; }
+.gs-member-row { display:flex;align-items:center;gap:0.6rem;padding:0.4rem 0;border-bottom:1px solid var(--border);font-size:0.85rem; }
+.gs-member-row:last-child { border-bottom:none; }
+.gs-member-initial { width:28px;height:28px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0;text-transform:uppercase; }
+.gs-member-name { flex:1;font-weight:600; }
+.gs-member-status { font-size:0.7rem;padding:1px 6px;border-radius:20px;text-transform:uppercase;letter-spacing:0.05em; }
+.gs-member-joined { background:rgba(34,197,94,0.15);color:#22c55e; }
+.gs-member-invited { background:rgba(66,165,245,0.15);color:#64b5f6; }
+.gs-member-count { font-size:0.75rem;color:var(--muted); }
+.gs-results-view { display:flex;flex-direction:column;gap:1.2rem; }
+.gs-section-title { font-size:1.3rem;font-weight:700; }
+.gs-waiting-overlay { position:absolute;inset:0;background:rgba(15,15,15,0.85);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;z-index:10; }
+.gs-waiting-inner { display:flex;flex-direction:column;align-items:center;gap:1rem;color:var(--muted); }
+.gs-waiting-spinner { width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.gs-mode-badge { font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:0.06em; }
+.gs-mode-async { background:rgba(66,165,245,0.15);color:#64b5f6;border:1px solid rgba(66,165,245,0.3); }
+.gs-mode-live { background:rgba(229,9,20,0.15);color:var(--accent);border:1px solid rgba(229,9,20,0.3); }
+</style>
+
+<script>
+const SESSION_ID = {{session.id}};
+const SESSION_MODE = '{{session.mode}}';
+const IS_OWNER = {{#if isOwner}}true{{else}}false{{/if}};
+const POLL_INTERVAL = SESSION_MODE === 'live' ? 3000 : 30000;
+let movies = {{{moviesJson}}};
+let index = 0;
+let mySwipeCount = {{mySwipeCount}};
+const totalMovies = {{totalMovies}};
+
+const card = document.getElementById('movieCard');
+const noMore = document.getElementById('noMoreMsg');
+const poster = document.getElementById('cardPoster');
+const fallback = document.getElementById('cardFallback');
+const fallbackTitle = document.getElementById('cardFallbackTitle');
+const titleEl = document.getElementById('cardTitle');
+const metaEl = document.getElementById('cardMeta');
+const badgesEl = document.getElementById('cardBadges');
+const synopsis = document.getElementById('cardSynopsis');
+const passBtn = document.getElementById('passBtn');
+const saveBtn = document.getElementById('saveBtn');
+
+const GENRE_MAP = {28:'Action',12:'Adventure',16:'Animation',35:'Comedy',80:'Crime',99:'Documentary',18:'Drama',10751:'Family',14:'Fantasy',36:'History',27:'Horror',10402:'Music',9648:'Mystery',10749:'Romance',878:'Sci-Fi',53:'Thriller',10752:'War',37:'Western'};
+
+function showCard(i) {
+  if (!card) return;
+  if (i >= movies.length) { card.style.display='none'; if(noMore) noMore.style.display='flex'; return; }
+  card.style.display=''; if(noMore) noMore.style.display='none';
+  const m = movies[i];
+  titleEl.textContent = m.title;
+  metaEl.textContent = [m.year, m.rating ? `★ ${m.rating}` : null].filter(Boolean).join(' · ');
+  if (badgesEl) badgesEl.innerHTML = (m.genres||'').split(', ').filter(Boolean).map(g=>`<span class="genre-badge genre-${g.replace(/[^a-zA-Z]/g,'')}">${g}</span>`).join('');
+  synopsis.textContent = m.synopsis || '';
+  if (m.poster) { poster.src=m.poster; poster.style.display=''; fallback.style.display='none'; }
+  else { poster.style.display='none'; fallback.style.display='flex'; if(fallbackTitle) fallbackTitle.textContent=m.title; }
+}
+
+function updateProgress() {
+  const pct = totalMovies > 0 ? Math.min(100, Math.round((mySwipeCount/totalMovies)*100)) : 0;
+  const bar = document.getElementById('progressBar');
+  const num = document.getElementById('progressNum');
+  if (bar) bar.style.width = pct+'%';
+  if (num) num.textContent = mySwipeCount;
+}
+
+async function recordSessionSwipe(m, liked) {
+  try {
+    const res = await fetch(`/group-sessions/${SESSION_ID}/swipe`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ movieId:m.id, title:m.title, posterUrl:m.poster, liked }),
+    });
+    const data = await res.json();
+    if (data.matched && data.matchedMovie) addMatchToPanel(data.matchedMovie);
+  } catch(_) {}
+}
+
+function addMatchToPanel(movie) {
+  const list = document.getElementById('matchesList');
+  if (!list) return;
+  const empty = list.querySelector('.gs-sidebar-empty');
+  if (empty) empty.remove();
+  const el = document.createElement('div');
+  el.className = 'gs-match-card';
+  el.innerHTML = `<div class="gs-match-poster">${movie.poster_url?`<img src="${movie.poster_url}" alt="${movie.title}" />`:'<span>✦</span>'}</div><div class="gs-match-info"><p class="gs-match-title">${movie.title}</p></div>`;
+  list.prepend(el);
+  const countEl = document.getElementById('matchCountNum');
+  if (countEl) countEl.textContent = parseInt(countEl.textContent||'0')+1;
+}
+
+function advance(direction) {
+  card.classList.add(direction==='pass'?'swipe-left':'swipe-right');
+  setTimeout(() => {
+    card.classList.remove('swipe-left','swipe-right');
+    index++; mySwipeCount++; updateProgress(); showCard(index);
+    if (SESSION_MODE==='live') showWaiting();
+  }, 350);
+}
+
+if (passBtn) passBtn.addEventListener('click', () => { const m=movies[index]; if(!m) return; recordSessionSwipe(m,false); advance('pass'); });
+if (saveBtn) saveBtn.addEventListener('click', () => { const m=movies[index]; if(!m) return; recordSessionSwipe(m,true); advance('save'); });
+
+let waitingActive = false;
+function showWaiting() { const o=document.getElementById('waitingOverlay'); if(o){o.style.display='flex';waitingActive=true;} }
+function hideWaiting() { const o=document.getElementById('waitingOverlay'); if(o){o.style.display='none';waitingActive=false;} }
+
+async function pollState() {
+  try {
+    const res = await fetch(`/api/group-sessions/${SESSION_ID}/state`);
+    const data = await res.json();
+    const membersEl = document.getElementById('membersList');
+    if (membersEl && data.members) {
+      membersEl.innerHTML = data.members.map(m=>`<div class="gs-member-row"><div class="gs-member-initial">${(m.username||'?')[0].toUpperCase()}</div><span class="gs-member-name">${m.username}</span><span class="gs-member-status gs-member-${m.status}">${m.status}</span><span class="gs-member-count">${m.swipeCount} swiped</span></div>`).join('');
+    }
+    if (data.matches && data.matches.length) {
+      const matchesEl = document.getElementById('matchesList');
+      if (matchesEl) {
+        matchesEl.innerHTML = data.matches.map(m=>`<div class="gs-match-card"><div class="gs-match-poster">${m.poster_url?`<img src="${m.poster_url}" alt="${m.title}" />`:'<span>✦</span>'}</div><div class="gs-match-info"><p class="gs-match-title">${m.title}</p></div></div>`).join('');
+        const countEl = document.getElementById('matchCountNum');
+        if (countEl) countEl.textContent = data.matches.length;
+      }
+    }
+    if (SESSION_MODE==='live' && waitingActive && data.members) {
+      const allSwiped = data.members.filter(m=>m.status==='joined').every(m=>m.swipeCount>=mySwipeCount);
+      if (allSwiped) hideWaiting();
+    }
+    if (data.session && data.session.status==='ended') window.location.reload();
+  } catch(_) {}
+}
+
+setInterval(pollState, POLL_INTERVAL);
+
+const endBtn = document.getElementById('endSessionBtn');
+if (endBtn) endBtn.addEventListener('click', async () => {
+  if (!confirm('End this session for everyone?')) return;
+  try { await fetch(`/group-sessions/${SESSION_ID}/end`, {method:'POST'}); window.location.reload(); } catch(_) {}
+});
+
+const leaveBtn = document.getElementById('leaveSessionBtn');
+if (leaveBtn) leaveBtn.addEventListener('click', () => { if(confirm('Leave this session?')) window.location.href='/group-sessions'; });
+
+showCard(0);
+updateProgress();
+</script>
