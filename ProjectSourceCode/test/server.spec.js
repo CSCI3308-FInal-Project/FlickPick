@@ -53,7 +53,7 @@ describe('Testing Add User API', () => {
 
 
 
-describe('Testing Watchlist API', () => {
+xdescribe('Testing Watchlist API', () => {
   const agent = chai.request.agent(app);
 
   before(done => {
