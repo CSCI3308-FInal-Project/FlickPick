@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () =>
       const usernameEl = document.getElementById('username');
       const nameEl = document.getElementById('name');
       const ageEl = document.getElementById('age');
-      const genderEl = document.getElementById('gender');
+      const countryEl = document.getElementById('country');
       const bioEl = document.getElementById('bio');
       const favoriteGenresEl = document.getElementById('favoriteGenres');
       const favoriteMoviesEl = document.getElementById('favoriteMovies');
@@ -24,21 +24,21 @@ document.addEventListener('DOMContentLoaded', () =>
         !usernameEl ||
         !nameEl ||
         !ageEl ||
-        !genderEl ||
+        !countryEl ||
         !bioEl ||
         !favoriteGenresEl ||
         !favoriteMoviesEl
-      ) 
+      )
       {
         return;
       }
 
-      if (!editing) 
+      if (!editing)
         {
         usernameEl.innerHTML = `<input type="text" id="usernameInput" value="${usernameEl.textContent.trim()}">`;
         nameEl.innerHTML = `<input type="text" id="nameInput" value="${nameEl.textContent.trim()}">`;
         ageEl.innerHTML = `<input type="number" id="ageInput" value="${ageEl.textContent.trim()}">`;
-        genderEl.innerHTML = `<input type="text" id="genderInput" value="${genderEl.textContent.trim()}">`;
+        countryEl.innerHTML = `<input type="text" id="countryInput" maxlength="2" placeholder="e.g. US" value="${countryEl.textContent.trim()}">`;
         bioEl.innerHTML = `<textarea id="bioInput">${bioEl.textContent.trim()}</textarea>`;
         favoriteGenresEl.innerHTML = `<input type="text" id="favoriteGenresInput" value="${favoriteGenresEl.textContent.trim()}">`;
         favoriteMoviesEl.innerHTML = `<input type="text" id="favoriteMoviesInput" value="${favoriteMoviesEl.textContent.trim()}">`;
@@ -48,12 +48,12 @@ document.addEventListener('DOMContentLoaded', () =>
         return;
       }
 
-      const profileData = 
+      const profileData =
       {
         username: document.getElementById('usernameInput').value.trim(),
         name: document.getElementById('nameInput').value.trim(),
         age: document.getElementById('ageInput').value.trim(),
-        gender: document.getElementById('genderInput').value.trim(),
+        country: document.getElementById('countryInput').value.trim().toUpperCase(),
         bio: document.getElementById('bioInput').value.trim(),
         favoriteGenres: document.getElementById('favoriteGenresInput').value.trim(),
         favoriteMovies: document.getElementById('favoriteMoviesInput').value.trim()
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () =>
       usernameEl.textContent = profileData.username || 'No username';
       nameEl.textContent = profileData.name || 'Not provided';
       ageEl.textContent = profileData.age || 'Not provided';
-      genderEl.textContent = profileData.gender || 'Not provided';
+      countryEl.textContent = profileData.country || 'Not provided';
       bioEl.textContent = profileData.bio || 'No bio added.';
       favoriteGenresEl.textContent = profileData.favoriteGenres || 'None selected';
       favoriteMoviesEl.textContent = profileData.favoriteMovies || 'None selected';
@@ -102,4 +102,36 @@ document.addEventListener('DOMContentLoaded', () =>
     window.location.href = '/logout';
     });
   }
+  const photoInput = document.getElementById('photoInput');
+const profilePhoto = document.getElementById('profilePhoto');
+
+if (photoInput) {
+  photoInput.addEventListener('change', async () => {
+    const file = photoInput.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    try {
+      const res = await fetch('/profile/photo', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+  const newImg = document.createElement('img');
+  newImg.id = 'profilePhoto';
+  newImg.src = data.photoUrl;
+  newImg.alt = 'Profile Photo';
+  newImg.className = 'profile-photo';
+  profilePhoto.replaceWith(newImg);
+} else {
+        alert('Failed to upload photo');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+    }
+  });
+}
 });

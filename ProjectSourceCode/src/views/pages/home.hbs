@@ -1,70 +1,118 @@
 <div class="home-container">
-  <div class="welcome-banner">
-    <h1>Discover Your Next Film</h1>
-    <p>Swipe right to save, left to pass.</p>
-  </div>
+  <div class="home-layout">
 
-  <div class="filter-bar">
-    <form class="filter-form" method="GET" action="/">
-      <select name="genre" class="filter-select">
-        <option value="">All Genres</option>
-        <option value="28"  {{#if (eq activeFilters.genre "28")}}selected{{/if}}>Action</option>
-        <option value="12"  {{#if (eq activeFilters.genre "12")}}selected{{/if}}>Adventure</option>
-        <option value="16"  {{#if (eq activeFilters.genre "16")}}selected{{/if}}>Animation</option>
-        <option value="35"  {{#if (eq activeFilters.genre "35")}}selected{{/if}}>Comedy</option>
-        <option value="80"  {{#if (eq activeFilters.genre "80")}}selected{{/if}}>Crime</option>
-        <option value="99"  {{#if (eq activeFilters.genre "99")}}selected{{/if}}>Documentary</option>
-        <option value="18"  {{#if (eq activeFilters.genre "18")}}selected{{/if}}>Drama</option>
-        <option value="10751" {{#if (eq activeFilters.genre "10751")}}selected{{/if}}>Family</option>
-        <option value="14"  {{#if (eq activeFilters.genre "14")}}selected{{/if}}>Fantasy</option>
-        <option value="36"  {{#if (eq activeFilters.genre "36")}}selected{{/if}}>History</option>
-        <option value="27"  {{#if (eq activeFilters.genre "27")}}selected{{/if}}>Horror</option>
-        <option value="10402" {{#if (eq activeFilters.genre "10402")}}selected{{/if}}>Music</option>
-        <option value="9648" {{#if (eq activeFilters.genre "9648")}}selected{{/if}}>Mystery</option>
-        <option value="10749" {{#if (eq activeFilters.genre "10749")}}selected{{/if}}>Romance</option>
-        <option value="878" {{#if (eq activeFilters.genre "878")}}selected{{/if}}>Sci-Fi</option>
-        <option value="53"  {{#if (eq activeFilters.genre "53")}}selected{{/if}}>Thriller</option>
-        <option value="10752" {{#if (eq activeFilters.genre "10752")}}selected{{/if}}>War</option>
-        <option value="37"  {{#if (eq activeFilters.genre "37")}}selected{{/if}}>Western</option>
-      </select>
-
-      <select name="minRating" class="filter-select">
-        <option value="">Any Rating</option>
-        <option value="6" {{#if (eq activeFilters.minRating "6")}}selected{{/if}}>6+ ★</option>
-        <option value="7" {{#if (eq activeFilters.minRating "7")}}selected{{/if}}>7+ ★</option>
-        <option value="8" {{#if (eq activeFilters.minRating "8")}}selected{{/if}}>8+ ★</option>
-      </select>
-
-      <button type="submit" class="btn-filter-apply">Apply</button>
-      {{#if (or activeFilters.genre activeFilters.minRating)}}
-        <a href="/" class="btn-filter-clear">Clear</a>
-      {{/if}}
-    </form>
-  </div>
-
-  <div class="card-stack">
-    <div class="movie-card" id="movieCard">
-      <div class="card-poster">
-        <img id="cardPoster" src="" alt="Movie poster" onerror="this.style.display='none'" />
-        <div class="poster-fallback" id="cardFallback">🎬</div>
+    <!-- Sidebar: welcome, filters, stats, shortcut -->
+    <aside class="home-sidebar">
+      <div class="welcome-banner">
+        <h1>Discover Your<br>Next Film</h1>
+        <p>Swipe right to save, left to pass.</p>
       </div>
-      <div class="card-info">
-        <h2 class="card-title" id="cardTitle">Loading...</h2>
-        <p class="card-meta" id="cardMeta"></p>
-        <p class="card-synopsis" id="cardSynopsis"></p>
+
+      <div class="filter-bar">
+        <form class="filter-form" method="GET" action="/">
+          <select name="genre" class="filter-select">
+            <option value="">All Genres</option>
+            <option value="28"    {{#if (eq activeFilters.genre "28")}}selected{{/if}}>Action</option>
+            <option value="12"    {{#if (eq activeFilters.genre "12")}}selected{{/if}}>Adventure</option>
+            <option value="16"    {{#if (eq activeFilters.genre "16")}}selected{{/if}}>Animation</option>
+            <option value="35"    {{#if (eq activeFilters.genre "35")}}selected{{/if}}>Comedy</option>
+            <option value="80"    {{#if (eq activeFilters.genre "80")}}selected{{/if}}>Crime</option>
+            <option value="99"    {{#if (eq activeFilters.genre "99")}}selected{{/if}}>Documentary</option>
+            <option value="18"    {{#if (eq activeFilters.genre "18")}}selected{{/if}}>Drama</option>
+            <option value="10751" {{#if (eq activeFilters.genre "10751")}}selected{{/if}}>Family</option>
+            <option value="14"    {{#if (eq activeFilters.genre "14")}}selected{{/if}}>Fantasy</option>
+            <option value="36"    {{#if (eq activeFilters.genre "36")}}selected{{/if}}>History</option>
+            <option value="27"    {{#if (eq activeFilters.genre "27")}}selected{{/if}}>Horror</option>
+            <option value="10402" {{#if (eq activeFilters.genre "10402")}}selected{{/if}}>Music</option>
+            <option value="9648"  {{#if (eq activeFilters.genre "9648")}}selected{{/if}}>Mystery</option>
+            <option value="10749" {{#if (eq activeFilters.genre "10749")}}selected{{/if}}>Romance</option>
+            <option value="878"   {{#if (eq activeFilters.genre "878")}}selected{{/if}}>Sci-Fi</option>
+            <option value="53"    {{#if (eq activeFilters.genre "53")}}selected{{/if}}>Thriller</option>
+            <option value="10752" {{#if (eq activeFilters.genre "10752")}}selected{{/if}}>War</option>
+            <option value="37"    {{#if (eq activeFilters.genre "37")}}selected{{/if}}>Western</option>
+          </select>
+
+          <select name="minRating" class="filter-select">
+            <option value="">Any Rating</option>
+            <option value="6" {{#if (eq activeFilters.minRating "6")}}selected{{/if}}>6+ ★</option>
+            <option value="7" {{#if (eq activeFilters.minRating "7")}}selected{{/if}}>7+ ★</option>
+            <option value="8" {{#if (eq activeFilters.minRating "8")}}selected{{/if}}>8+ ★</option>
+          </select>
+
+          <button type="submit" class="btn-filter-apply">Apply</button>
+          {{#if (or activeFilters.genre activeFilters.minRating)}}
+            <a href="/" class="btn-filter-clear">Clear</a>
+          {{/if}}
+        </form>
       </div>
-      <div class="card-actions">
-        <button class="btn-pass" id="passBtn">✕ Pass</button>
-        <button class="btn-save" id="saveBtn">♥ Save</button>
+
+      <div class="sidebar-stats">
+        <div class="stat-item">
+          <span class="stat-num" id="statSaved">{{savedCount}}</span>
+          <span class="stat-label">Saved</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="statWatched">{{watchedCount}}</span>
+          <span class="stat-label">Watched</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="statDiscovered">{{discoveredCount}}</span>
+          <span class="stat-label">Discovered</span>
+        </div>
+      </div>
+
+      <a href="/watchlist" class="btn-watchlist-shortcut">Go to Watchlist →</a>
+    </aside>
+
+    <!-- Main: card stack -->
+    <div class="home-main">
+      <div class="card-stack">
+        <div class="movie-card" id="movieCard">
+          <div class="card-poster">
+            <img id="cardPoster" src="" alt="Movie poster" onerror="this.style.display='none'" />
+            <div class="poster-fallback" id="cardFallback">
+              <span class="poster-fallback-icon">✦</span>
+              <span class="poster-fallback-title" id="cardFallbackTitle"></span>
+            </div>
+            <div class="poster-gradient"></div>
+            <div class="poster-overlay">
+              <h2 class="card-title" id="cardTitle"></h2>
+              <p class="card-meta" id="cardMeta"></p>
+            </div>
+          </div>
+          <div class="poster-badges" id="cardBadges"></div>
+          <div class="card-info">
+            <p class="card-synopsis" id="cardSynopsis"></p>
+          </div>
+          <div class="card-actions">
+            <button class="btn-pass" id="passBtn">✕ Pass</button>
+            <button class="btn-watched" id="watchedBtn">✓ Watched</button>
+            <button class="btn-save" id="saveBtn">♥ Save</button>
+          </div>
+        </div>
+
+        <div class="no-more-msg" id="noMoreMsg">
+          <span class="empty-icon">✦</span>
+          <strong>You've seen everything</strong>
+          <span><a href="/">Refresh for a new set of movies.</a></span>
+        </div>
+        <div class="home-error-banner" id="homeErrorBanner" style="display:none">
+          <span class="error-icon">⚠</span>
+          <span>Could not load movies — check your connection.</span>
+          <a href="/" class="btn-retry-home">Retry</a>
+        </div>
+      </div>
+      <div class="undo-bar" id="undoBar" style="display:none">
+        <span class="undo-label">Undo last swipe?</span>
+        <button class="btn-undo" id="undoBtn">↩ Undo</button>
       </div>
     </div>
 
-    <p class="no-more-msg" id="noMoreMsg">
-      No more movies to show. <a href="/">Refresh for more.</a>
-    </p>
   </div>
 </div>
 
 <script>
   window.FLICKPICK_MOVIES = {{{ movies }}};
+  window.FLICKPICK_STATS = { saved: {{savedCount}}, watched: {{watchedCount}}, discovered: {{discoveredCount}} };
+  window.FLICKPICK_FETCH_ERROR = {{#if fetchError}}true{{else}}false{{/if}};
 </script>

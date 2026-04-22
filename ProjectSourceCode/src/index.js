@@ -5,13 +5,35 @@ const bcrypt = require('bcryptjs');
 const pgp = require('pg-promise')();
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, 'resources/uploads');
+    fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `user_${req.session?.user?.id || 'unknown'}_${Date.now()}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
 
 const app = express();
 
 // Database connection
 const db = pgp({
-  host: process.env.DB_HOST || 'db',
-  port: process.env.DB_PORT || 5432,
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
   database: process.env.POSTGRES_DB,
   user: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
@@ -24,6 +46,8 @@ app.engine('hbs', engine({
   helpers: {
     eq: (a, b) => a === b,
     or: (a, b) => a || b,
+    times: n => Array.from({ length: n }, (_, i) => i + 1),
+    lte: (a, b) => a <= b,
   },
 }));
 app.set('view engine', 'hbs');
@@ -75,6 +99,23 @@ function shuffleArray(arr) {
   return arr;
 }
 
+// ── TMDb page cache ───────────────────────────────────────────────────────────
+const tmdbCache = new Map();
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
+async function fetchTmdbPage(category, page) {
+  const key = `${category}-${page}`;
+  const hit = tmdbCache.get(key);
+  if (hit && Date.now() < hit.expiresAt) return hit.data;
+  const r = await fetch(
+    `https://api.themoviedb.org/3/movie/${category}?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page}`
+  );
+  if (!r.ok) throw new Error(`TMDb ${category}/${page} responded ${r.status}`);
+  const data = await r.json();
+  tmdbCache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+  return data;
+}
+
 app.get('/welcome', (req, res) => {
   res.json({ status: 'success', message: 'Welcome!' });
 });
@@ -115,9 +156,16 @@ app.get('/', requireAuth, async (req, res) => {
 
     const seenIds = new Set(swipeRows.map(r => String(r.movie_id)));
 
+    // Also exclude movies already in watchlist (in case they predate swipe tracking)
+    const watchlistRows = await db.any(
+      'SELECT movie_id FROM watchlist WHERE user_id = $1',
+      [req.session.user.id]
+    );
+    watchlistRows.forEach(r => seenIds.add(String(r.movie_id)));
+
     // Tally genres, actors, and directors from liked swipes
-    const genreCounts    = {};
-    const actorCounts    = {};
+    const genreCounts = {};
+    const actorCounts = {};
     const directorCounts = {};
 
     for (const row of swipeRows) {
@@ -140,15 +188,14 @@ app.get('/', requireAuth, async (req, res) => {
     }
 
     const likedCount = swipeRows.filter(r => r.liked).length;
-    const topGenres  = Object.entries(genreCounts)
+    const topGenres = Object.entries(genreCounts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 2)
       .map(([id]) => id);
 
-    // Top person = most liked actor or director (whichever scored highest)
-    const topActors    = Object.entries(actorCounts).sort((a, b) => b[1] - a[1]).slice(0, 2);
+    const topActors = Object.entries(actorCounts).sort((a, b) => b[1] - a[1]).slice(0, 2);
     const topDirectors = Object.entries(directorCounts).sort((a, b) => b[1] - a[1]).slice(0, 1);
-    const topPeople    = [...topActors, ...topDirectors]
+    const topPeople = [...topActors, ...topDirectors]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 2)
       .map(([id]) => id);
@@ -159,15 +206,15 @@ app.get('/', requireAuth, async (req, res) => {
     if (genre || minRating) {
       // Explicit filters override everything
       const extra = {};
-      if (genre)     extra['with_genres']       = genre;
-      if (minRating) extra['vote_average.gte']  = minRating;
+      if (genre) extra['with_genres'] = genre;
+      if (minRating) extra['vote_average.gte'] = minRating;
       combined = await tmdbDiscover(extra);
 
     } else if (likedCount >= 5 && (topGenres.length > 0 || topPeople.length > 0)) {
-      // Recommendation mode: 40% genre-based, 30% person-based, 30% random variety
+      // Recommendation mode: 30% genre-based, 30% person-based, 40% random
       const fetches = [
-        topGenres.length  ? tmdbDiscover({ with_genres: topGenres.join(',') })         : Promise.resolve([]),
-        topPeople.length  ? tmdbDiscover({ with_people: topPeople.join(',') })         : Promise.resolve([]),
+        topGenres.length ? tmdbDiscover({ with_genres: topGenres.join(',') }) : Promise.resolve([]),
+        topPeople.length ? tmdbDiscover({ with_people: topPeople.join(',') }) : Promise.resolve([]),
         (async () => {
           const cats = shuffleArray([...TMDB_CATEGORIES]).slice(0, 2);
           const [a, b] = await Promise.all([
@@ -179,13 +226,10 @@ app.get('/', requireAuth, async (req, res) => {
       ];
 
       const [genreBatch, peopleBatch, randomBatch] = await Promise.all(fetches);
-
-      // Targets: 30% genre, 30% people, 40% random (out of 20 cards)
-      const genreTarget  = Math.round(20 * 0.3);
+      const genreTarget = Math.round(20 * 0.3);
       const peopleTarget = Math.round(20 * 0.3);
       const randomTarget = 20 - genreTarget - peopleTarget;
-
-      const seen     = new Set();
+      const seen = new Set();
       const addBatch = (batch, limit) => {
         const added = [];
         for (const m of batch) {
@@ -194,44 +238,66 @@ app.get('/', requireAuth, async (req, res) => {
         }
         return added;
       };
-
-      const genrePick  = addBatch(shuffleArray(genreBatch),  genreTarget);
-      const peoplePick = addBatch(shuffleArray(peopleBatch), peopleTarget);
-      const randomPick = addBatch(shuffleArray(randomBatch), randomTarget);
-
-      combined = shuffleArray([...genrePick, ...peoplePick, ...randomPick]);
+      combined = shuffleArray([
+        ...addBatch(shuffleArray(genreBatch), genreTarget),
+        ...addBatch(shuffleArray(peopleBatch), peopleTarget),
+        ...addBatch(shuffleArray(randomBatch), randomTarget),
+      ]);
 
     } else {
-      // Not enough history — random shuffle across two categories
-      const cats = shuffleArray([...TMDB_CATEGORIES]).slice(0, 2);
-      const [a, b] = await Promise.all([
-        tmdbCategory(cats[0], Math.floor(Math.random() * 5) + 1),
-        tmdbCategory(cats[1], Math.floor(Math.random() * 5) + 1),
+      // Not enough history — random shuffle across three categories, wider page range
+      const cats = shuffleArray([...TMDB_CATEGORIES]).slice(0, 3);
+      const [a, b, c] = await Promise.all([
+        tmdbCategory(cats[0], Math.floor(Math.random() * 15) + 1),
+        tmdbCategory(cats[1], Math.floor(Math.random() * 15) + 1),
+        tmdbCategory(cats[2], Math.floor(Math.random() * 15) + 1),
       ]);
       const seen = new Set();
-      combined = [...a, ...b].filter(m => {
+      combined = [...a, ...b, ...c].filter(m => {
         if (seen.has(m.id)) return false;
         seen.add(m.id);
         return true;
       });
     }
 
-    // Exclude movies the user has already swiped on
     const movies = shuffleArray(combined.filter(m => !seenIds.has(String(m.id)))).map(m => ({
-      id:       String(m.id),
-      title:    m.title,
-      poster:   m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
-      year:     m.release_date ? m.release_date.slice(0, 4) : 'N/A',
-      rating:   m.vote_average ? m.vote_average.toFixed(1) : 'N/A',
-      genres:   (m.genre_ids || []).slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean).join(', '),
+      id: String(m.id),
+      title: m.title,
+      poster: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
+      year: m.release_date ? m.release_date.slice(0, 4) : 'N/A',
+      rating: m.vote_average ? m.vote_average.toFixed(1) : 'N/A',
+      genres: (m.genre_ids || []).slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean).join(', '),
       genreIds: (m.genre_ids || []).join(','),
       synopsis: m.overview || '',
     }));
 
-    res.render('pages/home', { user: req.session.user, movies: JSON.stringify(movies), activeFilters });
+    const userId = req.session.user.id;
+    const [savedResult, watchedResult, discoveredResult] = await Promise.all([
+      db.one('SELECT COUNT(*) FROM watchlist WHERE user_id = $1 AND watched = false', [userId]),
+      db.one('SELECT COUNT(*) FROM watchlist WHERE user_id = $1 AND watched = true', [userId]),
+      db.one('SELECT COUNT(*) FROM swipe_history WHERE user_id = $1', [userId]),
+    ]);
+    res.render('pages/home', {
+      user: req.session.user,
+      movies: JSON.stringify(movies),
+      activeFilters,
+      activePage: 'home',
+      savedCount: parseInt(savedResult.count, 10),
+      watchedCount: parseInt(watchedResult.count, 10),
+      discoveredCount: parseInt(discoveredResult.count, 10),
+    });
   } catch (err) {
-    console.error('TMDb fetch error:', err);
-    res.render('pages/home', { user: req.session.user, movies: '[]', activeFilters });
+    console.error('Home route error:', err);
+    res.render('pages/home', {
+      user: req.session.user,
+      movies: '[]',
+      activeFilters,
+      activePage: 'home',
+      savedCount: 0,
+      watchedCount: 0,
+      discoveredCount: 0,
+      fetchError: true,
+    });
   }
 });
 
@@ -244,8 +310,8 @@ app.post('/swipe', requireAuth, async (req, res) => {
        VALUES($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (user_id, movie_id) DO NOTHING`,
       [req.session.user.id, String(movie_id), title,
-       genre_ids || '', actor_ids || '', director_id || null,
-       rating || null, liked === true || liked === 'true']
+      genre_ids || '', actor_ids || '', director_id || null,
+      rating || null, liked === true || liked === 'true']
     );
     res.json({ success: true });
   } catch (err) {
@@ -253,7 +319,6 @@ app.post('/swipe', requireAuth, async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
-
 
 
 app.get('/login', (req, res) => {
@@ -348,28 +413,62 @@ app.get('/watchlist', requireAuth, async (req, res) => {
       [req.session.user.id]
     );
     const watchlist = all.filter(m => !m.watched);
-    const watched   = all.filter(m => m.watched);
+    const watched = all.filter(m => m.watched);
 
-    const activeArray = activeTab === 'watched' ? watched : watchlist;
-    const totalPages  = Math.max(1, Math.ceil(activeArray.length / PAGE_SIZE));
-    const safePage    = Math.min(page, totalPages);
-    const paged       = activeArray.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+    // Batch-fetch which friends also have these movies
+    const movieIds = all.map(r => r.movie_id);
+    const friendActivityMap = {};
+    if (movieIds.length > 0) {
+      const friendRows = await db.any(
+        `SELECT w.movie_id, u.username, w.watched
+         FROM friends f
+         JOIN users u
+           ON u.id = CASE
+             WHEN f.requester_id = $1 THEN f.addressee_id
+             ELSE f.requester_id
+           END
+         JOIN watchlist w ON w.user_id = u.id
+         WHERE (f.requester_id = $1 OR f.addressee_id = $1)
+           AND f.status = 'accepted'
+           AND w.movie_id = ANY($2)`,
+        [req.session.user.id, movieIds]
+      );
+      for (const row of friendRows) {
+        if (!friendActivityMap[row.movie_id]) friendActivityMap[row.movie_id] = [];
+        friendActivityMap[row.movie_id].push({ username: row.username, watched: row.watched });
+      }
+    }
+
+    // Attach serialized friend data to each row
+    const attachFriends = rows => rows.map(r => ({
+      ...r,
+      friendsJson: JSON.stringify(friendActivityMap[r.movie_id] || [])
+    }));
+
+    const watchlistWithFriends = attachFriends(watchlist);
+    const watchedWithFriends   = attachFriends(watched);
+
+    const activeArray = activeTab === 'watched' ? watchedWithFriends : watchlistWithFriends;
+    const totalPages = Math.max(1, Math.ceil(activeArray.length / PAGE_SIZE));
+    const safePage = Math.min(page, totalPages);
+    const paged = activeArray.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
     res.render('pages/watchlist', {
-      user:           req.session.user,
-      watchlist:      activeTab === 'watchlist' ? paged : watchlist,
-      watched:        activeTab === 'watched'   ? paged : watched,
+      user: req.session.user,
+      watchlist: activeTab === 'watchlist' ? paged : watchlistWithFriends,
+      watched:   activeTab === 'watched'   ? paged : watchedWithFriends,
       watchlistCount: watchlist.length,
       watchedCount:   watched.length,
-      tabWatchlist:   activeTab === 'watchlist',
-      tabWatched:     activeTab === 'watched',
-      currentPage:    safePage,
+      tabWatchlist: activeTab === 'watchlist',
+      tabWatched:   activeTab === 'watched',
+      currentPage: safePage,
       totalPages,
       showPagination: totalPages > 1,
-      hasPrev:        safePage > 1,
-      hasNext:        safePage < totalPages,
-      prevPage:       safePage - 1,
-      nextPage:       safePage + 1,
+      hasPrev: safePage > 1,
+      hasNext: safePage < totalPages,
+      prevPage: safePage - 1,
+      nextPage: safePage + 1,
+      activePage: 'watchlist',
     });
   } catch (err) {
     console.error(err);
@@ -383,6 +482,7 @@ app.get('/watchlist', requireAuth, async (req, res) => {
       showPagination: false,
       hasPrev: false, hasNext: false,
       prevPage: 1, nextPage: 1,
+      activePage: 'watchlist',
     });
   }
 });
@@ -406,6 +506,37 @@ app.post('/watchlist', requireAuth, async (req, res) => {
   }
 });
 
+app.post('/watchlist/watch-direct', requireAuth, async (req, res) => {
+  const { movie_id, title, poster_url, genre, year, rating, synopsis } = req.body;
+  try {
+    await db.none(
+      `INSERT INTO watchlist(user_id, movie_id, title, poster_url, genre, year, rating, synopsis, watched)
+       VALUES($1, $2, $3, $4, $5, $6, $7, $8, true)
+       ON CONFLICT (user_id, movie_id) DO UPDATE SET watched = true`,
+      [req.session.user.id, movie_id, title, poster_url || null,
+      genre || null, year || null, rating || null, synopsis || null]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Watch-direct error:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
+
+app.delete('/watchlist/by-movie/:movie_id', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      'DELETE FROM watchlist WHERE user_id = $1 AND movie_id = $2',
+      [req.session.user.id, req.params.movie_id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Watchlist by-movie delete error:', err);
+    res.status(500).json({ success: false, error: 'Failed to remove from watchlist' });
+  }
+});
+
 app.delete('/watchlist/:id', requireAuth, async (req, res) => {
   const tab = req.body._tab === 'watched' ? 'watched' : 'watchlist';
   try {
@@ -425,10 +556,11 @@ app.post('/watchlist/:id/watch', requireAuth, async (req, res) => {
       'UPDATE watchlist SET watched = true WHERE id = $1 AND user_id = $2',
       [req.params.id, req.session.user.id]
     );
+    res.json({ success: true });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ success: false });
   }
-  res.redirect('/watchlist?tab=watchlist');
 });
 
 app.post('/watchlist/:id/unwatch', requireAuth, async (req, res) => {
@@ -443,6 +575,48 @@ app.post('/watchlist/:id/unwatch', requireAuth, async (req, res) => {
   res.redirect('/watchlist?tab=watched');
 });
 
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+
+app.post('/reviews', requireAuth, async (req, res) => {
+  const { movie_id, title, rating, review_text } = req.body;
+  if (!movie_id || !rating) {
+    return res.status(400).json({ error: 'movie_id and rating are required' });
+  }
+  const r = parseInt(rating, 10);
+  if (isNaN(r) || r < 1 || r > 10) {
+    return res.status(400).json({ error: 'rating must be 1–10' });
+  }
+  try {
+    const row = await db.one(
+      `INSERT INTO reviews (user_id, movie_id, title, rating, review_text)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (user_id, movie_id) DO UPDATE
+         SET rating = EXCLUDED.rating,
+             review_text = EXCLUDED.review_text,
+             updated_at = NOW()
+       RETURNING id`,
+      [req.session.user.id, movie_id, title || null, r, review_text || null]
+    );
+    res.status(201).json({ success: true, id: row.id });
+  } catch (err) {
+    console.error('Review upsert error:', err);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+app.delete('/reviews/:id', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      'DELETE FROM reviews WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.session.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Review delete error:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
 // ─── Movie detail proxy ───────────────────────────────────────────────────────
 
 app.get('/api/movie/:tmdbId', async (req, res) => {
@@ -453,13 +627,13 @@ app.get('/api/movie/:tmdbId', async (req, res) => {
     if (!response.ok) throw new Error(`TMDB responded ${response.status}`);
     const data = await response.json();
     const directorPerson = (data.credits?.crew || []).find(p => p.job === 'Director') || null;
-    const castPersons    = (data.credits?.cast || []).slice(0, 5);
+    const castPersons = (data.credits?.cast || []).slice(0, 5);
     res.json({
-      director:   directorPerson?.name  || null,
-      directorId: directorPerson?.id    ? String(directorPerson.id) : null,
-      cast:       castPersons.map(p => p.name),
-      actorIds:   castPersons.map(p => String(p.id)),
-      synopsis:   data.overview || null,
+      director: directorPerson?.name || null,
+      directorId: directorPerson?.id ? String(directorPerson.id) : null,
+      cast: castPersons.map(p => p.name),
+      actorIds: castPersons.map(p => String(p.id)),
+      synopsis: data.overview || null,
     });
   } catch (err) {
     console.error('TMDB detail fetch error:', err);
@@ -467,7 +641,49 @@ app.get('/api/movie/:tmdbId', async (req, res) => {
   }
 });
 
+app.get('/api/reviews', requireAuth, async (req, res) => {
+  const { movie_id } = req.query;
+  if (!movie_id) return res.json({ review: null });
+  try {
+    const row = await db.oneOrNone(
+      'SELECT * FROM reviews WHERE user_id = $1 AND movie_id = $2',
+      [req.session.user.id, movie_id]
+    );
+    res.json({ review: row || null });
+  } catch (err) {
+    console.error('Get review error:', err);
+    res.status(500).json({ review: null });
+  }
+});
 
+app.get('/api/movie/:tmdbId/reviews', requireAuth, async (req, res) => {
+  const { tmdbId } = req.params;
+  const userId = req.session.user.id;
+  try {
+    const rows = await db.any(
+      `SELECT r.id, r.rating, r.review_text, r.created_at, u.username
+       FROM reviews r
+       JOIN users u ON u.id = r.user_id
+       WHERE r.movie_id = $1
+         AND r.user_id != $2
+         AND (
+           EXISTS (
+             SELECT 1 FROM friends
+             WHERE requester_id = $2 AND addressee_id = r.user_id AND status = 'accepted'
+           ) OR EXISTS (
+             SELECT 1 FROM friends
+             WHERE requester_id = r.user_id AND addressee_id = $2 AND status = 'accepted'
+           )
+         )
+       ORDER BY r.created_at DESC`,
+      [tmdbId, userId]
+    );
+    res.json({ reviews: rows });
+  } catch (err) {
+    console.error('Friend reviews error:', err);
+    res.status(500).json({ reviews: [] });
+  }
+});
 
 // Friends page
 app.get('/friends', requireAuth, async (req, res) => {
@@ -577,7 +793,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     username,
     name,
     age,
-    gender,
+    country,
     bio,
     favoriteGenres,
     favoriteMovies
@@ -585,23 +801,19 @@ app.put('/api/profile', requireAuth, async (req, res) => {
 
   try {
     await db.none(
-      `
-      UPDATE users
-      SET username = $1
-      WHERE id = $2
-      `,
+      `UPDATE users SET username = $1 WHERE id = $2`,
       [username, req.session.user.id]
     );
 
     await db.none(
       `
-      INSERT INTO profile (user_id, name, age, gender, bio, favorite_genres, favorite_movies)
+      INSERT INTO profile (user_id, name, age, country, bio, favorite_genres, favorite_movies)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (user_id)
       DO UPDATE SET
         name = EXCLUDED.name,
         age = EXCLUDED.age,
-        gender = EXCLUDED.gender,
+        country = EXCLUDED.country,
         bio = EXCLUDED.bio,
         favorite_genres = EXCLUDED.favorite_genres,
         favorite_movies = EXCLUDED.favorite_movies
@@ -610,7 +822,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
         req.session.user.id,
         name || null,
         age ? parseInt(age, 10) : null,
-        gender || null,
+        country ? country.toUpperCase().slice(0, 2) : null,
         bio || null,
         favoriteGenres || null,
         favoriteMovies || null
@@ -627,7 +839,20 @@ app.put('/api/profile', requireAuth, async (req, res) => {
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
-
+app.post('/profile/photo', requireAuth, upload.single('photo'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const photoUrl = `/uploads/${req.file.filename}`;
+  try {
+    await db.none(
+      'UPDATE profile SET photo_url = $1 WHERE user_id = $2',
+      [photoUrl, req.session.user.id]
+    );
+    res.json({ success: true, photoUrl });
+  } catch (err) {
+    console.error('Photo upload error:', err);
+    res.status(500).json({ error: 'Failed to save photo' });
+  }
+});
 async function initDb() {
   const createSql = fs.readFileSync(path.join(__dirname, 'init_data/create.sql'), 'utf8');
   const insertSql = fs.readFileSync(path.join(__dirname, 'init_data/insert.sql'), 'utf8');
@@ -654,19 +879,64 @@ app.get('/profile', requireAuth, async (req, res) => {
 
     if (!profile) {
       await db.none(
-        'INSERT INTO profile(user_id, name, age, gender, bio, favorite_genres, favorite_movies) VALUES($1, $2, $3, $4, $5, $6, $7)',
-        [req.session.user.id, '', null, '', '', '', '']
+        'INSERT INTO profile(user_id, name, age, country, bio, favorite_genres, favorite_movies) VALUES($1, $2, $3, $4, $5, $6, $7)',
+        [req.session.user.id, '', null, null, '', '', '']
       );
-
-      profile = await db.one(
-        'SELECT * FROM profile WHERE user_id = $1',
-        [req.session.user.id]
-      );
+      profile = await db.one('SELECT * FROM profile WHERE user_id = $1', [req.session.user.id]);
     }
+
+    // Swipe stats
+    const swipeRows = await db.any(
+      'SELECT genre_ids, liked FROM swipe_history WHERE user_id = $1',
+      [req.session.user.id]
+    );
+    const totalSwipes = swipeRows.length;
+    const rightSwipes = swipeRows.filter(r => r.liked).length;
+    const leftSwipes = totalSwipes - rightSwipes;
+
+    // Top 3 genres from liked swipes
+    const genreCounts = {};
+    for (const row of swipeRows) {
+      if (!row.liked || !row.genre_ids) continue;
+      row.genre_ids.split(',').forEach(id => {
+        const g = id.trim();
+        if (g) genreCounts[g] = (genreCounts[g] || 0) + 1;
+      });
+    }
+    const topGenres = Object.entries(genreCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([id]) => GENRE_MAP[id])
+      .filter(Boolean);
+
+    // Watchlist counts
+    const [savedResult, watchedResult] = await Promise.all([
+      db.one('SELECT COUNT(*) FROM watchlist WHERE user_id = $1 AND watched = false', [req.session.user.id]),
+      db.one('SELECT COUNT(*) FROM watchlist WHERE user_id = $1 AND watched = true', [req.session.user.id]),
+    ]);
+
+    // Recent reviews
+    const recentReviews = await db.any(
+      `SELECT r.*, w.poster_url
+       FROM reviews r
+       LEFT JOIN watchlist w ON w.movie_id = r.movie_id AND w.user_id = r.user_id
+       WHERE r.user_id = $1
+       ORDER BY r.created_at DESC
+       LIMIT 5`,
+      [req.session.user.id]
+    );
 
     res.render('pages/profile', {
       user: req.session.user,
-      profile
+      profile,
+      activePage: 'profile',
+      totalSwipes,
+      rightSwipes,
+      leftSwipes,
+      topGenres,
+      savedCount: parseInt(savedResult.count, 10),
+      watchedCount: parseInt(watchedResult.count, 10),
+      recentReviews,
     });
   } catch (err) {
     console.error('Profile load error:', err);

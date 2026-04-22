@@ -1,49 +1,127 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FlickPick | Profile</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
+
 <body>
 
 <main class="profile-page">
   <div class="profile-container">
     <section class="profile-header">
-      <h1>My Profile</h1>
-      <h2>Username: <span id="username">{{user.username}}</span></h2>
-      <button type="button" id="editProfileBtn" class="btn-primary">Edit Profile</button>
-    </section>
+  <div class="profile-photo-wrapper">
+    {{#if profile.photo_url}}
+  <img id="profilePhoto" src="{{profile.photo_url}}" alt="Profile Photo" class="profile-photo" />
+{{else}}
+  <div id="profilePhoto" class="profile-photo profile-photo-placeholder">👤</div>
+{{/if}}
+    
+    <input type="file" id="photoInput" accept="image/*" style="display:none" />
+</div>
+<label for="photoInput" class="photo-upload-link">Click to add photo</label>
+  <h1>My Profile</h1>
+  <h2>Username: <span id="username">{{user.username}}</span></h2>
+  <button type="button" id="editProfileBtn" class="btn-primary">Edit Profile</button>
+</section>
 
-    <section class="info-card">
-      <h3>About Me</h3>
-      <div class="profile-details">
-        <p><strong>Name:</strong> <span id="name">{{profile.name}}</span></p>
-        <p><strong>Age:</strong> <span id="age">{{profile.age}}</span></p>
-        <p><strong>Gender:</strong> <span id="gender">{{profile.gender}}</span></p>
-        <p><strong>Bio:</strong> <span id="bio">{{profile.bio}}</span></p>
-      </div>
-    </section>
+      <section class="info-card">
+        <h3>About Me</h3>
+        <div class="profile-details">
+          <p><strong>Name:</strong> <span id="name">{{profile.name}}</span></p>
+          <p><strong>Age:</strong> <span id="age">{{profile.age}}</span></p>
+          <p><strong>Country:</strong> <span id="country">{{profile.country}}</span></p>
+          <p><strong>Bio:</strong> <span id="bio">{{profile.bio}}</span></p>
+        </div>
+      </section>
 
-    <section class="info-card">
-      <h3>Favorites</h3>
-      <div class="profile-details">
-        <p><strong>Movies:</strong> <span id="favoriteMovies">{{profile.favorite_movies}}</span></p>
-        <p><strong>Genres:</strong> <span id="favoriteGenres">{{profile.favorite_genres}}</span></p>
-      </div>
-    </section>
+      <section class="info-card">
+        <h3>Favorites</h3>
+        <div class="profile-details">
+          <p><strong>Movies:</strong> <span id="favoriteMovies">{{profile.favorite_movies}}</span></p>
+          <p><strong>Genres:</strong> <span id="favoriteGenres">{{profile.favorite_genres}}</span></p>
+        </div>
+      </section>
 
-    <section class="info-card">
-      <h3>Swipe History Stats</h3>
-      <p>Total Swipes: <span id="totalSwipes">TBD</span></p>
-      <p>Right Swipes: <span id="rightSwipes">TBD</span></p>
-      <p>Left Swipes: <span id="leftSwipes">TBD</span></p>
-    </section>
+      <section class="info-card">
+        <h3>Your Stats</h3>
+        <div class="profile-stats-grid">
+          <div class="profile-stat">
+            <span class="stat-num">{{savedCount}}</span>
+            <span class="stat-label">Saved</span>
+          </div>
+          <div class="profile-stat">
+            <span class="stat-num">{{watchedCount}}</span>
+            <span class="stat-label">Watched</span>
+          </div>
+          <div class="profile-stat">
+            <span class="stat-num">{{totalSwipes}}</span>
+            <span class="stat-label">Discovered</span>
+          </div>
+          <div class="profile-stat">
+            <span class="stat-num">{{rightSwipes}}</span>
+            <span class="stat-label">Liked</span>
+          </div>
+        </div>
+        {{#if topGenres.length}}
+        <div class="profile-top-genres">
+          <p class="top-genres-label">Top Genres</p>
+          <div class="top-genres-list">
+            {{#each topGenres}}
+            <span class="genre-badge genre-{{this}}">{{this}}</span>
+            {{/each}}
+          </div>
+        </div>
+        {{/if}}
+      </section>
 
-    <button id="logoutBtn" class="logout-btn">Logout</button>
-  </div>
-</main>
+      {{#if recentReviews.length}}
+      <section class="info-card">
+        <h3>Recent Reviews</h3>
+        <div class="recent-reviews-list">
+          {{#each recentReviews}}
+          <div class="review-profile-row">
+            <div class="review-profile-thumb">
+              {{#if this.poster_url}}
+              <img src="{{this.poster_url}}" alt="{{this.title}} poster" />
+              {{else}}
+              🎬
+              {{/if}}
+            </div>
+            <div class="review-profile-info">
+              <div class="review-profile-title-row">
+                <span class="review-profile-title">{{this.title}}</span>
+              </div>
+              <div class="your-review-stars" style="display:flex;gap:2px;margin-bottom:0.25rem">
+                {{#each (times 10)}}
+                  {{#if (lte this ../this.rating)}}
+                  <span class="rstar">★</span>
+                  {{else}}
+                  <span class="rstar empty">★</span>
+                  {{/if}}
+                {{/each}}
+                <span class="your-review-score" style="margin-left:6px">{{this.rating}} / 10</span>
+              </div>
+              {{#if this.review_text}}
+              <p class="review-profile-snippet">"{{this.review_text}}"</p>
+              {{else}}
+              <p class="review-profile-snippet no-text">No review written.</p>
+              {{/if}}
+            </div>
+          </div>
+          {{/each}}
+        </div>
+        <a href="/watchlist?tab=watched" class="reviews-see-all">See all watched movies →</a>
+      </section>
+      {{/if}}
 
-<script src="/js/profile.js"></script>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </div>
+  </main>
+
+  <script src="/js/profile.js"></script>
+
 </html>
