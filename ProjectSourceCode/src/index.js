@@ -927,10 +927,45 @@ app.get('/users/:username', requireAuth, async (req, res) => {
       [viewedUser.id]
     );
 
+    const allMovies = await db.any(
+      'SELECT * FROM watchlist WHERE user_id = $1 ORDER BY added_at DESC',
+      [viewedUser.id]
+    );
+
+    const savedCount = allMovies.filter(m => !m.watched).length;
+    const watchedCount = allMovies.filter(m => m.watched).length;
+
+    const totalSwipes = profile?.total_swipes || 0;
+    const rightSwipes = profile?.right_swipes || 0;
+
+    const genreCounts = {};
+    allMovies.forEach(movie => {
+      if (movie.genre) {
+        movie.genre.split(',').map(g => g.trim()).forEach(g => {
+          if (g) genreCounts[g] = (genreCounts[g] || 0) + 1;
+        });
+      }
+    });
+
+    const topGenres = Object.entries(genreCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([genre]) => genre);
+
+    const recentReviews = allMovies
+      .filter(m => m.watched && m.rating)
+      .slice(0, 3);
+
     res.render('pages/userprofile', {
       user: req.session.user,
       viewedUser,
-      profile: profile || {}
+      profile: profile || {},
+      savedCount,
+      watchedCount,
+      totalSwipes,
+      rightSwipes,
+      topGenres,
+      recentReviews
     });
   } catch (err) {
     console.error('User profile load error:', err);
