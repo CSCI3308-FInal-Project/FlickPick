@@ -1013,13 +1013,17 @@ app.get('/group-sessions', requireAuth, async (req, res) => {
     const sessions = await db.any(
       `SELECT gs.*,
         (SELECT COUNT(*) FROM session_members sm WHERE sm.session_id = gs.id AND sm.status = 'joined') AS member_count,
-        (SELECT COUNT(*) FROM (
-          SELECT movie_id FROM session_swipes WHERE session_id = gs.id AND liked = true
-          GROUP BY movie_id
-          HAVING COUNT(DISTINCT user_id) = (SELECT COUNT(*) FROM session_members WHERE session_id = gs.id AND status = 'joined')
-        ) m) AS match_count
+        COALESCE(m.match_count, 0) AS match_count
        FROM group_sessions gs
        JOIN session_members sm ON sm.session_id = gs.id
+       LEFT JOIN LATERAL (
+          SELECT COUNT(*) AS match_count FROM (
+            SELECT movie_id FROM session_swipes sw
+            WHERE sw.session_id = gs.id AND sw.liked = true
+            GROUP BY movie_id
+            HAVING COUNT(DISTINCT sw.user_id) = (SELECT COUNT(*) FROM session_members mem WHERE mem.session_id = gs.id AND mem.status = 'joined')
+          ) sub
+       ) m ON true
        WHERE sm.user_id = $1
        ORDER BY gs.created_at DESC`,
       [userId]
@@ -1076,6 +1080,14 @@ app.post('/group-sessions/create', requireAuth, async (req, res) => {
       await db.none(
         `INSERT INTO session_members (session_id, user_id, status) VALUES ($1,$2,'invited') ON CONFLICT DO NOTHING`,
         [session.id, invitedId]
+      );
+      await db.none(
+        `INSERT INTO notifications (user_id, type, payload) VALUES ($1, $2, $3)`,
+        [
+          invitedId,
+          'session_invite',
+          { session_id: session.id, session_name: name, session_code: code, from_username: req.session.user.username }
+        ]
       );
     }
     res.json({ sessionId: session.id, code });
@@ -1235,6 +1247,19 @@ app.post('/api/notifications/:id/read', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Mark read error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/notifications/:id/delete', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      `DELETE FROM notifications WHERE id = $1 AND user_id = $2`,
+      [req.params.id, req.session.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete notification error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
