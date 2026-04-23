@@ -7,6 +7,7 @@ DELETE FROM watchlist     WHERE user_id = (SELECT id FROM users WHERE username =
 DELETE FROM profile       WHERE user_id = (SELECT id FROM users WHERE username = 'testuser');
 DELETE FROM friends       WHERE requester_id = (SELECT id FROM users WHERE username = 'testuser')
                              OR addressee_id  = (SELECT id FROM users WHERE username = 'testuser');
+DELETE FROM group_sessions WHERE owner_id = (SELECT id FROM users WHERE username = 'testuser');
 DELETE FROM users WHERE username = 'testuser' OR email = 'test@test.com';
 
 -- admin / password: admin1302
