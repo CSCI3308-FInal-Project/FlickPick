@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS profile (
   user_id         INT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name            VARCHAR(50),
   age             INT,
-  country         VARCHAR(100),
+  country         VARCHAR(2),
   bio             TEXT,
   favorite_movies TEXT,
   favorite_genres TEXT,
@@ -62,8 +62,7 @@ ALTER TABLE swipe_history ADD COLUMN IF NOT EXISTS actor_ids   TEXT;
 ALTER TABLE swipe_history ADD COLUMN IF NOT EXISTS director_id VARCHAR(50);
 
 -- Migrate profile table: replace gender with country
-ALTER TABLE profile ADD COLUMN IF NOT EXISTS country VARCHAR(100);
-ALTER TABLE profile ALTER COLUMN country TYPE VARCHAR(100);
+ALTER TABLE profile ADD COLUMN IF NOT EXISTS country VARCHAR(2);
 ALTER TABLE profile DROP COLUMN IF EXISTS gender;
 
 CREATE TABLE IF NOT EXISTS reviews (
@@ -104,6 +103,11 @@ CREATE TABLE IF NOT EXISTS group_sessions (
   created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   ended_at       TIMESTAMP
 );
+
+-- Ensure group_sessions owner cascades on user delete (fixes existing DBs missing this constraint)
+ALTER TABLE group_sessions DROP CONSTRAINT IF EXISTS group_sessions_owner_id_fkey;
+ALTER TABLE group_sessions ADD CONSTRAINT group_sessions_owner_id_fkey
+  FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE;
 
 CREATE TABLE IF NOT EXISTS session_members (
   session_id  INT REFERENCES group_sessions(id) ON DELETE CASCADE,
