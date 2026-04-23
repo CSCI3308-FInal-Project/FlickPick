@@ -297,6 +297,8 @@ if (endBtn) endBtn.addEventListener('click', async () => {
 const leaveBtn = document.getElementById('leaveSessionBtn');
 if (leaveBtn) leaveBtn.addEventListener('click', () => { if(confirm('Leave this session?')) window.location.href='/group-sessions'; });
 
-showCard(0);
-updateProgress();
+setTimeout(() => {
+  showCard(0);
+  updateProgress();
+}, 100);
 </script>

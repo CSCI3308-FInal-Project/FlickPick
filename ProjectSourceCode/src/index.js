@@ -992,7 +992,7 @@ app.get('/group-sessions/:id', requireAuth, async (req, res) => {
       const tmdbData = await tmdbRes.json();
       const extra = (tmdbData.results || []).filter(m => !swipedSet.has(String(m.id))).map(m => ({ id: String(m.id), title: m.title, poster: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null, year: m.release_date?.slice(0, 4) || 'N/A', rating: m.vote_average?.toFixed(1) || 'N/A', genres: (m.genre_ids || []).slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean).join(', '), synopsis: m.overview || '' }));
       pool = [...pool, ...extra].slice(0, 20);
-    } catch (_) { }
+    } catch (err) { console.error('Movie pool fetch error:', err); }
     const isOwner = session.owner_id === userId;
     const totalMovies = pool.length;
     const progressPct = totalMovies > 0 ? Math.round((mySwipeCount / totalMovies) * 100) : 0;
@@ -1027,6 +1027,7 @@ app.post('/group-sessions/:id/swipe', requireAuth, async (req, res) => {
            SELECT movie_id FROM session_swipes WHERE session_id=$1 AND liked=true
            GROUP BY movie_id
            HAVING COUNT(DISTINCT user_id)=(SELECT COUNT(*) FROM session_members WHERE session_id=$1 AND status='joined')
+         AND (SELECT COUNT(*) FROM session_members WHERE session_id=$1 AND status='joined') > 1
          )
        LIMIT 1`,
       [sessionId]
@@ -1116,7 +1117,8 @@ app.get('/api/group-sessions/:id/state', requireAuth, async (req, res) => {
       `SELECT movie_id, title, poster_url FROM session_swipes
        WHERE session_id=$1 AND liked=true
        GROUP BY movie_id, title, poster_url
-       HAVING COUNT(DISTINCT user_id)=(SELECT COUNT(*) FROM session_members WHERE session_id=$1 AND status='joined')`,
+       HAVING COUNT(DISTINCT user_id)=(SELECT COUNT(*) FROM session_members WHERE session_id=$1 AND status='joined')
+AND (SELECT COUNT(*) FROM session_members WHERE session_id=$1 AND status='joined') > 1`,
       [sessionId]
     );
     res.json({ session, members: members.map(m => ({ ...m, swipeCount: parseInt(m.swipe_count || 0) })), matches });
