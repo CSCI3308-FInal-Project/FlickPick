@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (poster) {
         posterEl.innerHTML = `<img src="${poster}" alt="${title} poster" />`;
       } else {
-        posterEl.textContent = '🎬';
+        posterEl.innerHTML = '<i class="fa-solid fa-film"></i>';
       }
     }
 
@@ -530,6 +530,11 @@ function openModal(row) {
   document.getElementById('modalTmdbLink').href =
     `https://www.themoviedb.org/movie/${row.dataset.movieId}`;
 
+  const groupSessionBtn = document.getElementById('modalGroupSessionBtn');
+  if (groupSessionBtn) {
+    groupSessionBtn.href = `/group-sessions?seed=${encodeURIComponent(row.dataset.movieId)}&seedTitle=${encodeURIComponent(row.dataset.title || '')}`;
+  }
+
   const id = row.dataset.id;
   const isWatched = row.dataset.watched === 'true';
 
@@ -568,7 +573,7 @@ function openModal(row) {
   if (row.dataset.poster) {
     posterEl.innerHTML = `<img src="${row.dataset.poster}" alt="${row.dataset.title} poster" />`;
   } else {
-    posterEl.textContent = '🎬';
+    posterEl.innerHTML = '<i class="fa-solid fa-film"></i>';
   }
 
   // Show loading state
@@ -833,7 +838,7 @@ function showCardToast(card, text) {
           <input type="hidden" name="_tab" value="watched" />
           <button type="submit" class="btn-remove-modal"
             onclick="return confirm('Remove \'${title.replace(/'/g, "\\'")}\\' from your list?')">
-            ✕ Remove
+            <i class="fa-solid fa-xmark"></i> Remove
           </button>
         </form>
       `;
@@ -845,7 +850,7 @@ function showCardToast(card, text) {
           <input type="hidden" name="_tab" value="watchlist" />
           <button type="submit" class="btn-remove-modal"
             onclick="return confirm('Remove \'${title.replace(/'/g, "\\'")}\\' from your list?')">
-            ✕ Remove
+            <i class="fa-solid fa-xmark"></i> Remove
           </button>
         </form>
       `;

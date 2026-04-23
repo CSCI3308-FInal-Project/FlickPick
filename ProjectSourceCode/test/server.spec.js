@@ -96,3 +96,100 @@ xdescribe('Testing Watchlist API', () => {
   });
 });
 
+describe('WS8: Watchlist page loads with friend data', () => {
+  const agent = chai.request.agent(app);
+
+  before(done => {
+    chai.request(app)
+      .post('/register')
+      .redirects(0)
+      .send({ username: 'ws8user', email: 'ws8@test.com', password: 'ws8password' })
+      .end(() => {
+        agent
+          .post('/login')
+          .send({ username: 'ws8user', password: 'ws8password' })
+          .end(() => done());
+      });
+  });
+
+  it('GET /watchlist returns 200 for logged-in user', done => {
+    agent
+      .get('/watchlist')
+      .end((_err, res) => {
+        expect(res).to.have.status(200);
+        done();
+      });
+  });
+
+  it('GET /watchlist?tab=watched returns 200 for logged-in user', done => {
+    agent
+      .get('/watchlist?tab=watched')
+      .end((_err, res) => {
+        expect(res).to.have.status(200);
+        done();
+      });
+  });
+});
+
+describe('Notifications API', () => {
+  const agent = chai.request.agent(app);
+
+  before(done => {
+    chai.request(app)
+      .post('/register')
+      .redirects(0)
+      .send({ username: 'notifuser', email: 'notif@test.com', password: 'testpass' })
+      .end(() => {
+        agent.post('/login').send({ username: 'notifuser', password: 'testpass' }).end(() => done());
+      });
+  });
+
+  it('GET /api/notifications returns unreadCount and notifications array', done => {
+    agent.get('/api/notifications').end((err, res) => {
+      expect(res).to.have.status(200);
+      expect(res.body).to.have.property('unreadCount');
+      expect(res.body).to.have.property('notifications').that.is.an('array');
+      done();
+    });
+  });
+});
+
+describe('Friend Requests', () => {
+  const agent = chai.request.agent(app);
+
+  before(done => {
+    // Clean up any stale friend request from prior runs
+    chai.request(app)
+      .delete('/test/friends-cleanup')
+      .send({ requester: 'friendrequser', addressee: 'friendtarget' })
+      .end(() => {
+        chai.request(app)
+          .post('/register').redirects(0)
+          .send({ username: 'friendrequser', email: 'freq@test.com', password: 'testpass' })
+          .end(() => {
+            agent.post('/login').send({ username: 'friendrequser', password: 'testpass' }).end(() => done());
+          });
+      });
+  });
+
+  it('POST /friends/add sends pending request (not auto-accept)', done => {
+    chai.request(app).post('/register').redirects(0)
+      .send({ username: 'friendtarget', email: 'ftarget@test.com', password: 'testpass' })
+      .end(() => {
+        agent.post('/friends/add').send({ username: 'friendtarget' }).end((err, res) => {
+          expect(res).to.have.status(200);
+          expect(res.body.success).to.equal(true);
+          done();
+        });
+      });
+  });
+
+  it('GET /friends/requests returns array', done => {
+    agent.get('/friends/requests').end((err, res) => {
+      expect(res).to.have.status(200);
+      expect(res.body).to.have.property('requests').that.is.an('array');
+      done();
+    });
+  });
+});
+

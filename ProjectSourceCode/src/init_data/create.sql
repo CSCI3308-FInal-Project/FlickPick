@@ -77,6 +77,11 @@ CREATE TABLE IF NOT EXISTS reviews (
   UNIQUE(user_id, movie_id)
 );
 
+-- WS3: Change friends default to pending (for fresh installs)
+ALTER TABLE friends ALTER COLUMN status SET DEFAULT 'pending';
+
+-- Track who actually sent the friend request (MIN/MAX normalization loses this info)
+ALTER TABLE friends ADD COLUMN IF NOT EXISTS sender_id INT REFERENCES users(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS notifications (
   id         SERIAL PRIMARY KEY,
@@ -89,7 +94,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 CREATE TABLE IF NOT EXISTS group_sessions (
   id             SERIAL PRIMARY KEY,
-  owner_id       INT NOT NULL REFERENCES users(id),
+  owner_id       INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name           VARCHAR(100) NOT NULL,
   code           VARCHAR(8) UNIQUE NOT NULL,
   mode           VARCHAR(10) DEFAULT 'async',
@@ -119,4 +124,7 @@ CREATE TABLE IF NOT EXISTS session_swipes (
   UNIQUE(session_id, user_id, movie_id)
 );
 
-ALTER TABLE friends ALTER COLUMN status SET DEFAULT 'pending';
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id      ON notifications(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_session_members_session     ON session_members(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_swipes_session      ON session_swipes(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_swipes_session_user ON session_swipes(session_id, user_id);

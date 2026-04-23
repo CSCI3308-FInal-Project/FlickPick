@@ -1,101 +1,108 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const notifBadge = document.getElementById('notifBadge');
-  const notifList = document.getElementById('notifList');
-  const markAllReadBtn = document.getElementById('markAllReadBtn');
+(function () {
+  const bellBtn = document.getElementById('notifBellBtn');
+  const menu = document.getElementById('notifMenu');
+  const badge = document.getElementById('notifBadge');
+  const list = document.getElementById('notifList');
+  const markAllBtn = document.getElementById('notifMarkAll');
 
-  // The dropdown toggling logic is handled globally by script.js 
-  // (.nav-dropdown selector) which includes clicking outside.
+  if (!bellBtn) return; // not logged in
 
-  // Fetch notifications
-  const fetchNotifications = async () => {
-    try {
-      const response = await fetch('/api/notifications');
-      if (!response.ok) return;
+  function humanTime(iso) {
+    const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
 
-      const data = await response.json();
-      
-      // Update badge
-      if (data.unreadCount > 0) {
-        notifBadge.textContent = data.unreadCount;
-        notifBadge.style.display = 'flex';
-      } else {
-        notifBadge.style.display = 'none';
-      }
-
-      // Update list
-      if (!data.notifications || data.notifications.length === 0) {
-        notifList.innerHTML = '<div class="notif-empty">You\'re all caught up</div>';
-        return;
-      }
-
-      notifList.innerHTML = data.notifications.map(notif => {
-        let message = '';
-        let href = '#';
-        let icon = '';
-
-        if (notif.type === 'friend_request') {
-          message = `<b>${notif.payload.from_username}</b> sent you a friend request.`;
-          href = '/friends';
-          icon = '👥';
-        } else if (notif.type === 'session_invite') {
-          message = `<b>${notif.payload.from_username}</b> invited you to join session "<b>${notif.payload.session_name}</b>".`;
-          href = `/group-sessions?join=${notif.payload.session_code}`;
-          icon = '🍿';
-        } else if (notif.type === 'group_match') {
-          message = `New match in "<b>${notif.payload.session_name}</b>": <b>${notif.payload.movie_title}</b>!`;
-          href = `/group-sessions/${notif.payload.session_id}`;
-          icon = '🔥';
-        } else if (notif.type === 'session_ended') {
-          message = `Session "<b>${notif.payload.session_name}</b>" has ended.`;
-          href = `/group-sessions/${notif.payload.session_id}`;
-          icon = '🏁';
-        }
-
-        return `
-          <a href="${href}" class="notif-item ${notif.read ? '' : 'unread'}" data-id="${notif.id}">
-            <div class="notif-icon">${icon}</div>
-            <div class="notif-content">
-              <div class="notif-message">${message}</div>
-              <div class="notif-time">${new Date(notif.created_at).toLocaleString()}</div>
-            </div>
-          </a>
-        `;
-      }).join('');
-
-      // Add read handlers
-      document.querySelectorAll('.notif-item.unread').forEach(item => {
-        item.addEventListener('click', async (e) => {
-          // Send read request, don't prevent navigation
-          const id = item.dataset.id;
-          try {
-            await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
-          } catch(err) {
-            console.error(err);
-          }
-        });
-      });
-
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
+  function notifMessage(n) {
+    const p = n.payload || {};
+    switch (n.type) {
+      case 'friend_request':
+        return `<strong>${p.from_username}</strong> sent you a friend request`;
+      case 'session_invite':
+        return `<strong>${p.from_username}</strong> invited you to "${p.session_name}"`;
+      case 'group_match':
+        return `Match in "${p.session_name}": <strong>${p.movie_title}</strong>`;
+      case 'session_ended':
+        return `Session "<strong>${p.session_name}</strong>" has ended`;
+      default:
+        return 'New notification';
     }
+  }
+
+  function notifLink(n) {
+    const p = n.payload || {};
+    switch (n.type) {
+      case 'friend_request': return '/friends';
+      case 'session_invite': return `/group-sessions?join=${p.session_code}`;
+      case 'group_match':    return `/group-sessions/${p.session_id}`;
+      case 'session_ended':  return `/group-sessions/${p.session_id}`;
+      default: return '#';
+    }
+  }
+
+  function renderNotifications(notifications) {
+    if (!notifications.length) {
+      list.innerHTML = '<li class="notif-empty">You\'re all caught up</li>';
+      return;
+    }
+    list.innerHTML = notifications.map(n => `
+      <li class="notif-item ${n.read ? '' : 'notif-unread'}" data-id="${n.id}">
+        <a href="${notifLink(n)}" class="notif-link" onclick="markRead(${n.id})">
+          <span class="notif-msg">${notifMessage(n)}</span>
+          <span class="notif-time">${humanTime(n.created_at)}</span>
+        </a>
+      </li>
+    `).join('');
+  }
+
+  function updateBadge(count) {
+    if (count > 0) {
+      badge.textContent = count;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  function fetchNotifications() {
+    fetch('/api/notifications')
+      .then(r => r.json())
+      .then(data => {
+        updateBadge(data.unreadCount);
+        renderNotifications(data.notifications || []);
+      })
+      .catch(() => {});
+  }
+
+  window.markRead = function (id) {
+    fetch(`/api/notifications/${id}/read`, { method: 'POST' }).catch(() => {});
   };
 
-  // Initial fetch
+  markAllBtn.addEventListener('click', () => {
+    fetch('/api/notifications/read-all', { method: 'POST' })
+      .then(() => fetchNotifications())
+      .catch(() => {});
+  });
+
+  bellBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menu.classList.toggle('open');
+    if (menu.classList.contains('open')) fetchNotifications();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('notifDropdown').contains(e.target)) {
+      menu.classList.remove('open');
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') menu.classList.remove('open');
+  });
+
+  // Initial fetch + poll every 15s
   fetchNotifications();
-
-  // Poll exactly every 15 seconds
   setInterval(fetchNotifications, 15000);
-
-  // Mark all read
-  if (markAllReadBtn) {
-    markAllReadBtn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      try {
-        await fetch('/api/notifications/read-all', { method: 'POST' });
-        fetchNotifications();
-      } catch (error) {
-        console.error('Error marking all as read:', error);
-      }
-    });
-  }
-});
+})();

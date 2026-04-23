@@ -4,6 +4,23 @@
       <h1>Friends</h1>
     </section>
 
+    {{#if pendingCount}}
+    <section class="pending-requests-section">
+      <h2 class="section-heading">Pending Requests <span class="pending-badge">{{pendingCount}}</span></h2>
+      <ul class="pending-list">
+        {{#each pendingRequests}}
+        <li class="pending-item" data-id="{{this.id}}">
+          <span class="pending-username">{{this.username}} wants to be friends</span>
+          <div class="pending-actions">
+            <button class="btn-accept" onclick="acceptFriend({{this.id}}, this)">Accept</button>
+            <button class="btn-decline" onclick="declineFriend({{this.id}}, this)">Decline</button>
+          </div>
+        </li>
+        {{/each}}
+      </ul>
+    </section>
+    {{/if}}
+
     <section class="info-card">
       <h3>Add Friend</h3>
       <form id="addFriendForm" class="profile-details">
@@ -41,3 +58,40 @@
 </main>
 
 <script src="/js/friends.js"></script>
+
+<script>
+function acceptFriend(friendId, btn) {
+  fetch(`/friends/accept/${friendId}`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const item = btn.closest('.pending-item');
+        item.remove();
+        const badge = document.querySelector('.pending-badge');
+        if (badge) {
+          const n = parseInt(badge.textContent) - 1;
+          if (n <= 0) document.querySelector('.pending-requests-section').remove();
+          else badge.textContent = n;
+        }
+        location.reload();
+      }
+    });
+}
+
+function declineFriend(friendId, btn) {
+  fetch(`/friends/decline/${friendId}`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const item = btn.closest('.pending-item');
+        item.remove();
+        const badge = document.querySelector('.pending-badge');
+        if (badge) {
+          const n = parseInt(badge.textContent) - 1;
+          if (n <= 0) document.querySelector('.pending-requests-section').remove();
+          else badge.textContent = n;
+        }
+      }
+    });
+}
+</script>
