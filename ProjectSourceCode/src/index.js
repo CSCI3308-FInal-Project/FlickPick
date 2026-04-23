@@ -121,6 +121,28 @@ app.get('/welcome', (req, res) => {
   res.json({ status: 'success', message: 'Welcome!' });
 });
 
+// ── Test-only cleanup route (disabled in production) ─────────────────────────
+if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
+  app.delete('/test/friends-cleanup', async (req, res) => {
+    const { requester, addressee } = req.body;
+    try {
+      const u1 = await db.oneOrNone('SELECT id FROM users WHERE username = $1', [requester]);
+      const u2 = await db.oneOrNone('SELECT id FROM users WHERE username = $1', [addressee]);
+      if (u1 && u2) {
+        const smallerId = Math.min(u1.id, u2.id);
+        const largerId  = Math.max(u1.id, u2.id);
+        await db.none(
+          'DELETE FROM friends WHERE requester_id = $1 AND addressee_id = $2',
+          [smallerId, largerId]
+        );
+      }
+      res.json({ success: true });
+    } catch (err) {
+      res.json({ success: false });
+    }
+  });
+}
+
 // Helper: fetch a TMDb discover page with given params
 async function tmdbDiscover(extraParams) {
   const params = new URLSearchParams({
@@ -686,34 +708,85 @@ app.get('/api/movie/:tmdbId/reviews', requireAuth, async (req, res) => {
   }
 });
 
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+app.get('/api/notifications', requireAuth, async (req, res) => {
+  try {
+    const rows = await db.any(
+      `SELECT id, type, payload, read, created_at
+       FROM notifications
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [req.session.user.id]
+    );
+    const unreadCount = rows.filter(r => !r.read).length;
+    res.json({ unreadCount, notifications: rows });
+  } catch (err) {
+    console.error('Notifications fetch error:', err);
+    res.status(500).json({ unreadCount: 0, notifications: [] });
+  }
+});
+
+app.post('/api/notifications/read-all', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      'UPDATE notifications SET read = true WHERE user_id = $1',
+      [req.session.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Mark all read error:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
+app.post('/api/notifications/:id/read', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      'UPDATE notifications SET read = true WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.session.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Mark notification read error:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
 // Friends page
 app.get('/friends', requireAuth, async (req, res) => {
   try {
     const friends = await db.any(
-      `
-      SELECT
-        u.username,
-        p.name,
-        p.bio,
-        p.favorite_movies,
-        p.favorite_genres
-      FROM friends f
-      JOIN users u
-        ON u.id = CASE
-          WHEN f.requester_id = $1 THEN f.addressee_id
-          ELSE f.requester_id
-        END
-      LEFT JOIN profile p ON p.user_id = u.id
-      WHERE (f.requester_id = $1 OR f.addressee_id = $1)
-        AND f.status = 'accepted'
-      ORDER BY u.username
-      `,
+      `SELECT f.id, u.username, p.name, p.bio, p.favorite_movies, p.favorite_genres
+       FROM friends f
+       JOIN users u ON u.id = CASE
+         WHEN f.requester_id = $1 THEN f.addressee_id
+         ELSE f.requester_id
+       END
+       LEFT JOIN profile p ON p.user_id = u.id
+       WHERE (f.requester_id = $1 OR f.addressee_id = $1)
+         AND f.status = 'accepted'
+       ORDER BY u.username`,
+      [req.session.user.id]
+    );
+
+    const pendingRequests = await db.any(
+      `SELECT f.id, u.username
+       FROM friends f
+       JOIN users u ON u.id = f.sender_id
+       WHERE (f.requester_id = $1 OR f.addressee_id = $1)
+         AND f.sender_id != $1
+         AND f.status = 'pending'
+       ORDER BY f.created_at DESC`,
       [req.session.user.id]
     );
 
     res.render('pages/friends', {
       user: req.session.user,
-      friends
+      friends,
+      pendingRequests,
+      pendingCount: pendingRequests.length,
     });
   } catch (err) {
     console.error('Friends load error:', err);
@@ -724,37 +797,114 @@ app.get('/friends', requireAuth, async (req, res) => {
 // Add friend
 app.post('/friends/add', requireAuth, async (req, res) => {
   const { username } = req.body;
-
   try {
     const targetUser = await db.oneOrNone(
       'SELECT id, username FROM users WHERE username = $1',
       [username]
     );
-
     if (!targetUser) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-
     if (targetUser.id === req.session.user.id) {
       return res.status(400).json({ success: false, message: 'You cannot add yourself' });
     }
 
     const smallerId = Math.min(req.session.user.id, targetUser.id);
-    const largerId = Math.max(req.session.user.id, targetUser.id);
+    const largerId  = Math.max(req.session.user.id, targetUser.id);
 
-    await db.none(
-      `
-      INSERT INTO friends (requester_id, addressee_id, status)
-      VALUES ($1, $2, 'accepted')
-      ON CONFLICT (requester_id, addressee_id) DO NOTHING
-      `,
+    const existing = await db.oneOrNone(
+      'SELECT id, status FROM friends WHERE requester_id = $1 AND addressee_id = $2',
       [smallerId, largerId]
     );
+    if (existing) {
+      return res.status(409).json({ success: false, message: 'Friend request already sent or already friends' });
+    }
 
-    res.json({ success: true, message: 'Friend added successfully' });
+    await db.none(
+      `INSERT INTO friends (requester_id, addressee_id, status, sender_id)
+       VALUES ($1, $2, 'pending', $3)`,
+      [smallerId, largerId, req.session.user.id]
+    );
+
+    await db.none(
+      `INSERT INTO notifications (user_id, type, payload)
+       VALUES ($1, 'friend_request', $2)`,
+      [targetUser.id, JSON.stringify({ from_user_id: req.session.user.id, from_username: req.session.user.username })]
+    );
+
+    res.json({ success: true, message: 'Friend request sent' });
   } catch (err) {
     console.error('Add friend error:', err);
-    res.status(500).json({ success: false, message: 'Could not add friend' });
+    res.status(500).json({ success: false, message: 'Could not send friend request' });
+  }
+});
+
+app.get('/friends/requests', requireAuth, async (req, res) => {
+  try {
+    const rows = await db.any(
+      `SELECT f.id, u.username, f.sender_id AS from_user_id
+       FROM friends f
+       JOIN users u ON u.id = f.sender_id
+       WHERE (f.requester_id = $1 OR f.addressee_id = $1)
+         AND f.sender_id != $1
+         AND f.status = 'pending'`,
+      [req.session.user.id]
+    );
+    res.json({ requests: rows });
+  } catch (err) {
+    console.error('Friend requests fetch error:', err);
+    res.status(500).json({ requests: [] });
+  }
+});
+
+app.post('/friends/accept/:id', requireAuth, async (req, res) => {
+  try {
+    const friendRow = await db.oneOrNone(
+      `SELECT * FROM friends WHERE id = $1
+       AND (requester_id = $2 OR addressee_id = $2)
+       AND sender_id != $2
+       AND status = 'pending'`,
+      [req.params.id, req.session.user.id]
+    );
+    if (!friendRow) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+    await db.none(
+      'UPDATE friends SET status = $1 WHERE id = $2',
+      ['accepted', req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Accept friend error:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
+app.post('/friends/decline/:id', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      `DELETE FROM friends WHERE id = $1 AND (requester_id = $2 OR addressee_id = $2) AND status = 'pending'`,
+      [req.params.id, req.session.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Decline friend error:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
+app.delete('/friends/:id', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      `DELETE FROM friends WHERE id = $1
+       AND (requester_id = $2 OR addressee_id = $2)
+       AND status = 'accepted'`,
+      [req.params.id, req.session.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Unfriend error:', err);
+    res.status(500).json({ success: false });
   }
 });
 
@@ -823,7 +973,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
         req.session.user.id,
         name || null,
         age ? parseInt(age, 10) : null,
-        country ? country.toUpperCase().slice(0, 2) : null,
+        country || null,
         bio || null,
         favoriteGenres || null,
         favoriteMovies || null
@@ -863,13 +1013,17 @@ app.get('/group-sessions', requireAuth, async (req, res) => {
     const sessions = await db.any(
       `SELECT gs.*,
         (SELECT COUNT(*) FROM session_members sm WHERE sm.session_id = gs.id AND sm.status = 'joined') AS member_count,
-        (SELECT COUNT(*) FROM (
-          SELECT movie_id FROM session_swipes WHERE session_id = gs.id AND liked = true
-          GROUP BY movie_id
-          HAVING COUNT(DISTINCT user_id) = (SELECT COUNT(*) FROM session_members WHERE session_id = gs.id AND status = 'joined')
-        ) m) AS match_count
+        COALESCE(m.match_count, 0) AS match_count
        FROM group_sessions gs
        JOIN session_members sm ON sm.session_id = gs.id
+       LEFT JOIN LATERAL (
+          SELECT COUNT(*) AS match_count FROM (
+            SELECT movie_id FROM session_swipes sw
+            WHERE sw.session_id = gs.id AND sw.liked = true
+            GROUP BY movie_id
+            HAVING COUNT(DISTINCT sw.user_id) = (SELECT COUNT(*) FROM session_members mem WHERE mem.session_id = gs.id AND mem.status = 'joined')
+          ) sub
+       ) m ON true
        WHERE sm.user_id = $1
        ORDER BY gs.created_at DESC`,
       [userId]
@@ -926,6 +1080,14 @@ app.post('/group-sessions/create', requireAuth, async (req, res) => {
       await db.none(
         `INSERT INTO session_members (session_id, user_id, status) VALUES ($1,$2,'invited') ON CONFLICT DO NOTHING`,
         [session.id, invitedId]
+      );
+      await db.none(
+        `INSERT INTO notifications (user_id, type, payload) VALUES ($1, $2, $3)`,
+        [
+          invitedId,
+          'session_invite',
+          { session_id: session.id, session_name: name, session_code: code, from_username: req.session.user.username }
+        ]
       );
     }
     res.json({ sessionId: session.id, code });
@@ -1086,6 +1248,19 @@ app.post('/api/notifications/:id/read', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Mark read error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/notifications/:id/delete', requireAuth, async (req, res) => {
+  try {
+    await db.none(
+      `DELETE FROM notifications WHERE id = $1 AND user_id = $2`,
+      [req.params.id, req.session.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete notification error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
