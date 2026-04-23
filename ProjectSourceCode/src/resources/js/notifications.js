@@ -52,13 +52,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return `
-          <a href="${href}" class="notif-item ${notif.read ? '' : 'unread'}" data-id="${notif.id}">
-            <div class="notif-icon">${icon}</div>
-            <div class="notif-content">
-              <div class="notif-message">${message}</div>
-              <div class="notif-time">${new Date(notif.created_at).toLocaleString()}</div>
-            </div>
-          </a>
+          <div class="notif-wrapper" style="position: relative;">
+            <a href="${href}" class="notif-item ${notif.read ? '' : 'unread'}" data-id="${notif.id}">
+              <div class="notif-icon">${icon}</div>
+              <div class="notif-content">
+                <div class="notif-message">${message}</div>
+                <div class="notif-time">${new Date(notif.created_at).toLocaleString()}</div>
+              </div>
+            </a>
+            <button class="notif-delete-btn" data-id="${notif.id}" title="Delete notification">✕</button>
+          </div>
         `;
       }).join('');
 
@@ -71,6 +74,22 @@ document.addEventListener('DOMContentLoaded', () => {
             await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
           } catch(err) {
             console.error(err);
+          }
+        });
+      });
+
+      // Add delete handlers
+      document.querySelectorAll('.notif-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          try {
+            await fetch(`/api/notifications/${id}/delete`, { method: 'POST' });
+            btn.closest('.notif-wrapper').remove();
+            fetchNotifications(); // Update count
+          } catch(err) {
+            console.error('Error deleting notification:', err);
           }
         });
       });

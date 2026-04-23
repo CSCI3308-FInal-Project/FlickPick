@@ -2494,6 +2494,32 @@ main {
   color: var(--muted);
 }
 
+.empty-state span:last-child {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.notif-delete-btn {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.15s;
+  padding: 4px;
+}
+.notif-wrapper:hover .notif-delete-btn {
+  opacity: 1;
+}
+.notif-delete-btn:hover {
+  color: var(--accent);
+}
+
 .poster-fallback-title {
   font-size: 0.9rem;
   color: var(--muted);
@@ -3361,7 +3387,7 @@ main {
 .notif-item {
   display: flex;
   gap: 0.75rem;
-  padding: 0.85rem 1rem;
+  padding: 0.85rem 2.2rem 0.85rem 1rem;
   border-bottom: 1px solid var(--border);
   text-decoration: none;
   color: var(--text);
