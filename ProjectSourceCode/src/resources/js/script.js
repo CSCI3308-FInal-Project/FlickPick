@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (poster) {
         posterEl.innerHTML = `<img src="${poster}" alt="${title} poster" />`;
       } else {
-        posterEl.textContent = '🎬';
+        posterEl.innerHTML = '🎬';
       }
     }
 
@@ -530,6 +530,11 @@ function openModal(row) {
   document.getElementById('modalTmdbLink').href =
     `https://www.themoviedb.org/movie/${row.dataset.movieId}`;
 
+  const groupSessionBtn = document.getElementById('modalGroupSessionBtn');
+  if (groupSessionBtn) {
+    groupSessionBtn.href = `/group-sessions?seed=${encodeURIComponent(row.dataset.movieId)}&seedTitle=${encodeURIComponent(row.dataset.title || '')}`;
+  }
+
   const id = row.dataset.id;
   const isWatched = row.dataset.watched === 'true';
 
@@ -568,7 +573,7 @@ function openModal(row) {
   if (row.dataset.poster) {
     posterEl.innerHTML = `<img src="${row.dataset.poster}" alt="${row.dataset.title} poster" />`;
   } else {
-    posterEl.textContent = '🎬';
+    posterEl.innerHTML = '🎬';
   }
 
   // Show loading state
@@ -591,8 +596,9 @@ function openModal(row) {
   }
 
   fetch(`/api/movie/${tmdbId}`)
-    .then(r => r.json())
+    .then(r => { if (!r.ok) throw new Error('api'); return r.json(); })
     .then(data => {
+      if (data.error) throw new Error(data.error);
       detailsCache[tmdbId] = data;
       renderDetails(data);
     })
@@ -631,8 +637,12 @@ function retryDetails() {
   document.getElementById('modalDetails').style.display = 'none';
   document.getElementById('modalError').style.display = 'none';
   fetch(`/api/movie/${tmdbId}`)
-    .then(r => r.json())
-    .then(data => { detailsCache[tmdbId] = data; renderDetails(data); })
+    .then(r => { if (!r.ok) throw new Error('api'); return r.json(); })
+    .then(data => {
+      if (data.error) throw new Error(data.error);
+      detailsCache[tmdbId] = data;
+      renderDetails(data);
+    })
     .catch(() => {
       document.getElementById('modalLoading').style.display = 'none';
       document.getElementById('modalError').style.display = '';

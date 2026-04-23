@@ -41,16 +41,17 @@ The ideal FlickPick user is socially active and frequently watches movies with f
 
 ---
 
-## Tech Stack (TBD)
+## Tech Stack
 
-> Update this section as architectural decisions are made.
+- **Frontend:** Handlebars (HBS) templating, CSS, JavaScript
+- **Backend:** Node.js, Express.js
+- **Database:** PostgreSQL (via pg-promise)
+- **Movie Data API:** TMDB (The Movie Database) via Axios
+- **Authentication:** bcryptjs, express-session
+- **Testing:** Mocha, Chai, chai-http
+- **Hosting/Deployment:** Docker, Render
 
-- **Frontend:**
-- **Backend:**
-- **Database:**
-- **Movie Data API:**
-- **Authentication:**
-- **Hosting/Deployment:**
+**Live App:** [https://flickpick-9e0f.onrender.com](https://flickpick-9e0f.onrender.com)
 
 ---
 
@@ -66,12 +67,11 @@ FlickPick/
 
 ---
 
-## Running the App
+## Running the App Locally
 
 ```bash
 cd ProjectSourceCode
 docker compose up
 ```
-App runs at [http://localhost:3000]
 
-View wireframes at [http://localhost:3000/wireframes]
+App runs at [http://localhost:3000](http://localhost:3000)
