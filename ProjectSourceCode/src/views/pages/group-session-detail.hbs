@@ -250,7 +250,8 @@ function advance(direction) {
   card.classList.add(direction==='pass'?'swipe-left':'swipe-right');
   setTimeout(() => {
     card.classList.remove('swipe-left','swipe-right');
-    index++; mySwipeCount++; updateProgress(); showCard(index);
+    index++; mySwipeCount++; updateProgress();
+    setTimeout(() => { showCard(index); }, 50);
     if (SESSION_MODE==='live') showWaiting();
   }, 350);
 }
