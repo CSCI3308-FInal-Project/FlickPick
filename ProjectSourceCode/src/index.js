@@ -48,6 +48,7 @@ app.engine('hbs', engine({
     or: (a, b) => a || b,
     times: n => Array.from({ length: n }, (_, i) => i + 1),
     lte: (a, b) => a <= b,
+    gt: (a, b) => a > b,
   },
 }));
 app.set('view engine', 'hbs');
@@ -446,7 +447,7 @@ app.get('/watchlist', requireAuth, async (req, res) => {
     }));
 
     const watchlistWithFriends = attachFriends(watchlist);
-    const watchedWithFriends   = attachFriends(watched);
+    const watchedWithFriends = attachFriends(watched);
 
     const activeArray = activeTab === 'watched' ? watchedWithFriends : watchlistWithFriends;
     const totalPages = Math.max(1, Math.ceil(activeArray.length / PAGE_SIZE));
@@ -456,11 +457,11 @@ app.get('/watchlist', requireAuth, async (req, res) => {
     res.render('pages/watchlist', {
       user: req.session.user,
       watchlist: activeTab === 'watchlist' ? paged : watchlistWithFriends,
-      watched:   activeTab === 'watched'   ? paged : watchedWithFriends,
+      watched: activeTab === 'watched' ? paged : watchedWithFriends,
       watchlistCount: watchlist.length,
-      watchedCount:   watched.length,
+      watchedCount: watched.length,
       tabWatchlist: activeTab === 'watchlist',
-      tabWatched:   activeTab === 'watched',
+      tabWatched: activeTab === 'watched',
       currentPage: safePage,
       totalPages,
       showPagination: totalPages > 1,
@@ -477,7 +478,7 @@ app.get('/watchlist', requireAuth, async (req, res) => {
       watchlist: [], watched: [],
       watchlistCount: 0, watchedCount: 0,
       tabWatchlist: activeTab === 'watchlist',
-      tabWatched:   activeTab === 'watched',
+      tabWatched: activeTab === 'watched',
       currentPage: 1, totalPages: 1,
       showPagination: false,
       hasPrev: false, hasNext: false,
@@ -892,7 +893,7 @@ app.get('/group-sessions', requireAuth, async (req, res) => {
     );
     res.render('pages/group-sessions', {
       user: req.session.user, activePage: 'group-sessions',
-      sessions: sessions.map(s => ({ ...s, member_count: parseInt(s.member_count)||0, match_count: parseInt(s.match_count)||0 })),
+      sessions: sessions.map(s => ({ ...s, member_count: parseInt(s.member_count) || 0, match_count: parseInt(s.match_count) || 0 })),
       friends, topPicks,
     });
   } catch (err) {
@@ -984,20 +985,20 @@ app.get('/group-sessions/:id', requireAuth, async (req, res) => {
       if (session.seed_movie_id && !swipedSet.has(String(session.seed_movie_id))) {
         const seedRes = await fetch(`https://api.themoviedb.org/3/movie/${session.seed_movie_id}?api_key=${process.env.TMDB_API_KEY}`);
         const seedData = await seedRes.json();
-        if (seedData.id) pool.push({ id:String(seedData.id), title:seedData.title, poster:seedData.poster_path?`https://image.tmdb.org/t/p/w500${seedData.poster_path}`:null, year:seedData.release_date?.slice(0,4)||'N/A', rating:seedData.vote_average?.toFixed(1)||'N/A', genres:(seedData.genre_ids||[]).slice(0,2).map(id=>GENRE_MAP[id]).filter(Boolean).join(', '), synopsis:seedData.overview||'' });
+        if (seedData.id) pool.push({ id: String(seedData.id), title: seedData.title, poster: seedData.poster_path ? `https://image.tmdb.org/t/p/w500${seedData.poster_path}` : null, year: seedData.release_date?.slice(0, 4) || 'N/A', rating: seedData.vote_average?.toFixed(1) || 'N/A', genres: (seedData.genre_ids || []).slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean).join(', '), synopsis: seedData.overview || '' });
       }
-      const page = Math.floor(Math.random()*5)+1;
+      const page = Math.floor(Math.random() * 5) + 1;
       const tmdbRes = await fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page}`);
       const tmdbData = await tmdbRes.json();
-      const extra = (tmdbData.results||[]).filter(m=>!swipedSet.has(String(m.id))).map(m=>({ id:String(m.id), title:m.title, poster:m.poster_path?`https://image.tmdb.org/t/p/w500${m.poster_path}`:null, year:m.release_date?.slice(0,4)||'N/A', rating:m.vote_average?.toFixed(1)||'N/A', genres:(m.genre_ids||[]).slice(0,2).map(id=>GENRE_MAP[id]).filter(Boolean).join(', '), synopsis:m.overview||'' }));
+      const extra = (tmdbData.results || []).filter(m => !swipedSet.has(String(m.id))).map(m => ({ id: String(m.id), title: m.title, poster: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null, year: m.release_date?.slice(0, 4) || 'N/A', rating: m.vote_average?.toFixed(1) || 'N/A', genres: (m.genre_ids || []).slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean).join(', '), synopsis: m.overview || '' }));
       pool = [...pool, ...extra].slice(0, 20);
-    } catch(_) {}
+    } catch (_) { }
     const isOwner = session.owner_id === userId;
     const totalMovies = pool.length;
-    const progressPct = totalMovies > 0 ? Math.round((mySwipeCount/totalMovies)*100) : 0;
+    const progressPct = totalMovies > 0 ? Math.round((mySwipeCount / totalMovies) * 100) : 0;
     res.render('pages/group-session-detail', {
-      user:req.session.user, session, activePage:'group-sessions',
-      members: members.map(m=>({...m, swipeCount:parseInt(m.swipe_count||0)})),
+      user: req.session.user, session, activePage: 'group-sessions',
+      members: members.map(m => ({ ...m, swipeCount: parseInt(m.swipe_count || 0) })),
       matches, mySwipeCount, totalMovies, progressPct,
       matchCount: matches.length, isOwner,
       moviesJson: JSON.stringify(pool),
@@ -1017,7 +1018,7 @@ app.post('/group-sessions/:id/swipe', requireAuth, async (req, res) => {
       `INSERT INTO session_swipes (session_id, user_id, movie_id, title, poster_url, liked)
        VALUES ($1,$2,$3,$4,$5,$6)
        ON CONFLICT (session_id, user_id, movie_id) DO UPDATE SET liked=EXCLUDED.liked`,
-      [sessionId, userId, movieId, title, posterUrl||null, liked]
+      [sessionId, userId, movieId, title, posterUrl || null, liked]
     );
     const match = await db.oneOrNone(
       `SELECT movie_id, title, poster_url FROM session_swipes
@@ -1030,10 +1031,10 @@ app.post('/group-sessions/:id/swipe', requireAuth, async (req, res) => {
        LIMIT 1`,
       [sessionId]
     );
-    res.json({ matched:!!match, matchedMovie:match||null });
+    res.json({ matched: !!match, matchedMovie: match || null });
   } catch (err) {
     console.error('Session swipe error:', err);
-    res.status(500).json({ matched:false });
+    res.status(500).json({ matched: false });
   }
 });
 
@@ -1043,10 +1044,10 @@ app.post('/group-sessions/:id/end', requireAuth, async (req, res) => {
       `UPDATE group_sessions SET status='ended', ended_at=NOW() WHERE id=$1 AND owner_id=$2`,
       [req.params.id, req.session.user.id]
     );
-    res.json({ success:true });
+    res.json({ success: true });
   } catch (err) {
     console.error('End session error:', err);
-    res.status(500).json({ success:false });
+    res.status(500).json({ success: false });
   }
 });
 
@@ -1118,10 +1119,10 @@ app.get('/api/group-sessions/:id/state', requireAuth, async (req, res) => {
        HAVING COUNT(DISTINCT user_id)=(SELECT COUNT(*) FROM session_members WHERE session_id=$1 AND status='joined')`,
       [sessionId]
     );
-    res.json({ session, members:members.map(m=>({...m,swipeCount:parseInt(m.swipe_count||0)})), matches });
+    res.json({ session, members: members.map(m => ({ ...m, swipeCount: parseInt(m.swipe_count || 0) })), matches });
   } catch (err) {
     console.error('State poll error:', err);
-    res.status(500).json({ session:null, members:[], matches:[] });
+    res.status(500).json({ session: null, members: [], matches: [] });
   }
 });
 async function initDb() {
