@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS group_sessions (
   ended_at       TIMESTAMP
 );
 
+ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS deck JSONB;
+
 -- Ensure group_sessions owner cascades on user delete (fixes existing DBs missing this constraint)
 ALTER TABLE group_sessions DROP CONSTRAINT IF EXISTS group_sessions_owner_id_fkey;
 ALTER TABLE group_sessions ADD CONSTRAINT group_sessions_owner_id_fkey

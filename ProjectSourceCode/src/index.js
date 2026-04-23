@@ -1129,21 +1129,34 @@ app.get('/group-sessions/:id', requireAuth, async (req, res) => {
     const mySwipeCount = parseInt(mySwipeRow?.count || 0);
     const swipedIds = await db.any('SELECT movie_id FROM session_swipes WHERE session_id=$1 AND user_id=$2', [sessionId, userId]);
     const swipedSet = new Set(swipedIds.map(r => String(r.movie_id)));
-    let pool = [];
-    try {
-      if (session.seed_movie_id && !swipedSet.has(String(session.seed_movie_id))) {
-        const seedRes = await fetch(`https://api.themoviedb.org/3/movie/${session.seed_movie_id}?api_key=${process.env.TMDB_API_KEY}`);
-        const seedData = await seedRes.json();
-        if (seedData.id) pool.push({ id:String(seedData.id), title:seedData.title, poster:seedData.poster_path?`https://image.tmdb.org/t/p/w500${seedData.poster_path}`:null, year:seedData.release_date?.slice(0,4)||'N/A', rating:seedData.vote_average?.toFixed(1)||'N/A', genres:(seedData.genre_ids||[]).slice(0,2).map(id=>GENRE_MAP[id]).filter(Boolean).join(', '), synopsis:seedData.overview||'' });
+
+    // Use the stored shared deck, or generate it once and persist it
+    let deckMovies = session.deck;
+    if (!deckMovies || deckMovies.length === 0) {
+      let raw = [];
+      try {
+        if (session.seed_movie_id) {
+          const seedRes = await fetch(`https://api.themoviedb.org/3/movie/${session.seed_movie_id}?api_key=${process.env.TMDB_API_KEY}`);
+          const seedData = await seedRes.json();
+          if (seedData.id) raw.push({ id:String(seedData.id), title:seedData.title, poster:seedData.poster_path?`https://image.tmdb.org/t/p/w500${seedData.poster_path}`:null, year:seedData.release_date?.slice(0,4)||'N/A', rating:seedData.vote_average?.toFixed(1)||'N/A', genres:(seedData.genre_ids||[]).slice(0,2).map(id=>GENRE_MAP[id]).filter(Boolean).join(', '), synopsis:seedData.overview||'' });
+        }
+        const page = Math.floor(Math.random()*5)+1;
+        const tmdbRes = await fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page}`);
+        const tmdbData = await tmdbRes.json();
+        const extra = (tmdbData.results||[]).map(m=>({ id:String(m.id), title:m.title, poster:m.poster_path?`https://image.tmdb.org/t/p/w500${m.poster_path}`:null, year:m.release_date?.slice(0,4)||'N/A', rating:m.vote_average?.toFixed(1)||'N/A', genres:(m.genre_ids||[]).slice(0,2).map(id=>GENRE_MAP[id]).filter(Boolean).join(', '), synopsis:m.overview||'' }));
+        // Deduplicate seed movie from TMDB results if present
+        const seedId = raw[0]?.id;
+        raw = [...raw, ...extra.filter(m => m.id !== seedId)].slice(0, 20);
+      } catch(_) {}
+      if (raw.length > 0) {
+        await db.none('UPDATE group_sessions SET deck=$1 WHERE id=$2', [JSON.stringify(raw), sessionId]);
+        deckMovies = raw;
       }
-      const page = Math.floor(Math.random()*5)+1;
-      const tmdbRes = await fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${process.env.TMDB_API_KEY}&language=en-US&page=${page}`);
-      const tmdbData = await tmdbRes.json();
-      const extra = (tmdbData.results||[]).filter(m=>!swipedSet.has(String(m.id))).map(m=>({ id:String(m.id), title:m.title, poster:m.poster_path?`https://image.tmdb.org/t/p/w500${m.poster_path}`:null, year:m.release_date?.slice(0,4)||'N/A', rating:m.vote_average?.toFixed(1)||'N/A', genres:(m.genre_ids||[]).slice(0,2).map(id=>GENRE_MAP[id]).filter(Boolean).join(', '), synopsis:m.overview||'' }));
-      pool = [...pool, ...extra].slice(0, 20);
-    } catch(_) {}
+    }
+
+    const pool = (deckMovies || []).filter(m => !swipedSet.has(String(m.id)));
     const isOwner = session.owner_id === userId;
-    const totalMovies = pool.length;
+    const totalMovies = (deckMovies || []).length;
     const progressPct = totalMovies > 0 ? Math.round((mySwipeCount/totalMovies)*100) : 0;
     res.render('pages/group-session-detail', {
       user:req.session.user, session, activePage:'group-sessions',
