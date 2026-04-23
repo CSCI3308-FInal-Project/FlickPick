@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (poster) {
         posterEl.innerHTML = `<img src="${poster}" alt="${title} poster" />`;
       } else {
-        posterEl.innerHTML = '<i class="fa-solid fa-film"></i>';
+        posterEl.innerHTML = '🎬';
       }
     }
 
@@ -573,7 +573,7 @@ function openModal(row) {
   if (row.dataset.poster) {
     posterEl.innerHTML = `<img src="${row.dataset.poster}" alt="${row.dataset.title} poster" />`;
   } else {
-    posterEl.innerHTML = '<i class="fa-solid fa-film"></i>';
+    posterEl.innerHTML = '🎬';
   }
 
   // Show loading state
@@ -596,8 +596,9 @@ function openModal(row) {
   }
 
   fetch(`/api/movie/${tmdbId}`)
-    .then(r => r.json())
+    .then(r => { if (!r.ok) throw new Error('api'); return r.json(); })
     .then(data => {
+      if (data.error) throw new Error(data.error);
       detailsCache[tmdbId] = data;
       renderDetails(data);
     })
@@ -636,8 +637,12 @@ function retryDetails() {
   document.getElementById('modalDetails').style.display = 'none';
   document.getElementById('modalError').style.display = 'none';
   fetch(`/api/movie/${tmdbId}`)
-    .then(r => r.json())
-    .then(data => { detailsCache[tmdbId] = data; renderDetails(data); })
+    .then(r => { if (!r.ok) throw new Error('api'); return r.json(); })
+    .then(data => {
+      if (data.error) throw new Error(data.error);
+      detailsCache[tmdbId] = data;
+      renderDetails(data);
+    })
     .catch(() => {
       document.getElementById('modalLoading').style.display = 'none';
       document.getElementById('modalError').style.display = '';
@@ -838,7 +843,7 @@ function showCardToast(card, text) {
           <input type="hidden" name="_tab" value="watched" />
           <button type="submit" class="btn-remove-modal"
             onclick="return confirm('Remove \'${title.replace(/'/g, "\\'")}\\' from your list?')">
-            <i class="fa-solid fa-xmark"></i> Remove
+            ✕ Remove
           </button>
         </form>
       `;
@@ -850,7 +855,7 @@ function showCardToast(card, text) {
           <input type="hidden" name="_tab" value="watchlist" />
           <button type="submit" class="btn-remove-modal"
             onclick="return confirm('Remove \'${title.replace(/'/g, "\\'")}\\' from your list?')">
-            <i class="fa-solid fa-xmark"></i> Remove
+            ✕ Remove
           </button>
         </form>
       `;

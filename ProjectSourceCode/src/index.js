@@ -972,7 +972,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
         req.session.user.id,
         name || null,
         age ? parseInt(age, 10) : null,
-        country ? country.toUpperCase().slice(0, 2) : null,
+        country || null,
         bio || null,
         favoriteGenres || null,
         favoriteMovies || null

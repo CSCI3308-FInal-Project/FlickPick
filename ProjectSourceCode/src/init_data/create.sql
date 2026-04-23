@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS profile (
   user_id         INT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name            VARCHAR(50),
   age             INT,
-  country         VARCHAR(2),
+  country         VARCHAR(100),
   bio             TEXT,
   favorite_movies TEXT,
   favorite_genres TEXT,
@@ -62,7 +62,8 @@ ALTER TABLE swipe_history ADD COLUMN IF NOT EXISTS actor_ids   TEXT;
 ALTER TABLE swipe_history ADD COLUMN IF NOT EXISTS director_id VARCHAR(50);
 
 -- Migrate profile table: replace gender with country
-ALTER TABLE profile ADD COLUMN IF NOT EXISTS country VARCHAR(2);
+ALTER TABLE profile ADD COLUMN IF NOT EXISTS country VARCHAR(100);
+ALTER TABLE profile ALTER COLUMN country TYPE VARCHAR(100);
 ALTER TABLE profile DROP COLUMN IF EXISTS gender;
 
 CREATE TABLE IF NOT EXISTS reviews (

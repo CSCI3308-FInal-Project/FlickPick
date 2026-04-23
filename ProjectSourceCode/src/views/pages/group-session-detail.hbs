@@ -9,7 +9,7 @@
     <div class="gs-detail-meta-row">
       <span class="gs-meta-chip">Code: <code>{{session.code}}</code></span>
       <span class="gs-meta-chip">❤️ <span id="matchCountNum">{{matchCount}}</span> matches</span>
-      <span class="gs-meta-chip"><i class="fa-solid fa-film"></i> <span id="progressNum">{{mySwipeCount}}</span> / {{totalMovies}} swiped</span>
+      <span class="gs-meta-chip">🎬 <span id="progressNum">{{mySwipeCount}}</span> / {{totalMovies}} swiped</span>
       {{#if isOwner}}{{#if (eq session.status 'active')}}
         <button class="btn-end-session" id="endSessionBtn">End Session</button>
       {{/if}}{{/if}}
@@ -60,15 +60,15 @@
               <span class="poster-fallback-title" id="cardFallbackTitle"></span>
             </div>
             <div class="poster-gradient"></div>
-            <div class="poster-badges" id="cardBadges"></div>
             <div class="poster-overlay">
               <h2 class="card-title" id="cardTitle"></h2>
               <p class="card-meta" id="cardMeta"></p>
             </div>
           </div>
+          <div class="poster-badges" id="cardBadges"></div>
           <div class="card-info"><p class="card-synopsis" id="cardSynopsis"></p></div>
           <div class="card-actions">
-            <button class="btn-pass" id="passBtn"><i class="fa-solid fa-xmark"></i> Pass</button>
+            <button class="btn-pass" id="passBtn">✕ Pass</button>
             <button class="btn-save" id="saveBtn">❤ Like</button>
           </div>
         </div>
