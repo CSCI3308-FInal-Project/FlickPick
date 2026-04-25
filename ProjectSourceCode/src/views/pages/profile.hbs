@@ -13,16 +13,9 @@
 <main class="profile-page">
   <div class="profile-container">
     <section class="profile-header">
-  <div class="profile-photo-wrapper">
-    {{#if profile.photo_url}}
-  <img id="profilePhoto" src="{{profile.photo_url}}" alt="Profile Photo" class="profile-photo" />
-{{else}}
-  <div id="profilePhoto" class="profile-photo profile-photo-placeholder">👤</div>
-{{/if}}
-    
+  <div class="profile-photo-wrapper">    
     <input type="file" id="photoInput" accept="image/*" style="display:none" />
 </div>
-<label for="photoInput" class="photo-upload-link">Click to add photo</label>
   <h1>My Profile</h1>
   <h2>Username: <span id="username">{{user.username}}</span></h2>
   <button type="button" id="editProfileBtn" class="btn-primary">Edit Profile</button>
@@ -33,18 +26,10 @@
         <div class="profile-details">
           <p><strong>Name:</strong> <span id="name">{{profile.name}}</span></p>
           <p><strong>Age:</strong> <span id="age">{{profile.age}}</span></p>
-          <p><strong>Country:</strong> <span id="country">{{profile.country}}</span></p>
           <p><strong>Bio:</strong> <span id="bio">{{profile.bio}}</span></p>
         </div>
       </section>
 
-      <section class="info-card">
-        <h3>Favorites</h3>
-        <div class="profile-details">
-          <p><strong>Movies:</strong> <span id="favoriteMovies">{{profile.favorite_movies}}</span></p>
-          <p><strong>Genres:</strong> <span id="favoriteGenres">{{profile.favorite_genres}}</span></p>
-        </div>
-      </section>
 
       <section class="info-card">
         <h3>Your Stats</h3>
