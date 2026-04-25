@@ -13,16 +13,9 @@
 <main class="profile-page">
   <div class="profile-container">
     <section class="profile-header">
-  <div class="profile-photo-wrapper">
-    {{#if profile.photo_url}}
-  <img id="profilePhoto" src="{{profile.photo_url}}" alt="Profile Photo" class="profile-photo" />
-{{else}}
-  <div id="profilePhoto" class="profile-photo profile-photo-placeholder">👤</div>
-{{/if}}
-    
+  <div class="profile-photo-wrapper">    
     <input type="file" id="photoInput" accept="image/*" style="display:none" />
 </div>
-<label for="photoInput" class="photo-upload-link">Click to add photo</label>
   <h1>My Profile</h1>
   <h2>Username: <span id="username">{{user.username}}</span></h2>
   <button type="button" id="editProfileBtn" class="btn-primary">Edit Profile</button>
